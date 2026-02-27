@@ -37,6 +37,8 @@ export const AuthProvider = ({ children }) => {
 
             localStorage.setItem("token", token);
             localStorage.setItem("user", JSON.stringify(userData));
+            // Clear the session flag so notification toasts show on fresh login
+            sessionStorage.removeItem('edith_login_toast_shown');
             setUser(userData);
 
             return { success: true };
@@ -49,17 +51,15 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const register = async (username, email, password, role) => {
+    const register = async (username, email, password) => {
         try {
-            // Based on SRS, roles are DRIVER, PARKING_MANAGER, etc.
-            // API expects Set<String> role, but we send array or single string?
-            // Let's assume the backend handles ["driver"] or "driver". 
-            // Based on typical JWT implementations, send role array.
+            // Public signup always creates DRIVER accounts only
+            // Other roles are created by system admin
             await api.post("/auth/signup", {
                 username,
                 email,
                 password,
-                role: role
+                role: "DRIVER"
             });
             return { success: true };
         } catch (error) {
@@ -73,6 +73,7 @@ export const AuthProvider = ({ children }) => {
     const logout = () => {
         localStorage.removeItem("token");
         localStorage.removeItem("user");
+        sessionStorage.removeItem('edith_login_toast_shown');
         setUser(null);
     };
 

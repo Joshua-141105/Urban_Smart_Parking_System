@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { UserPlus, User, Mail, Lock, Briefcase } from "lucide-react";
+import { UserPlus, User, Mail, Lock } from "lucide-react";
 
 const Register = () => {
     const [formData, setFormData] = useState({
         username: "",
         email: "",
         password: "",
-        role: "DRIVER"
     });
     const [error, setError] = useState("");
     const { register } = useAuth();
@@ -27,8 +26,7 @@ const Register = () => {
         const result = await register(
             formData.username,
             formData.email,
-            formData.password,
-            formData.role
+            formData.password
         );
 
         setLoading(false);
@@ -44,7 +42,7 @@ const Register = () => {
         <form onSubmit={handleSubmit} className="animate-fade-in">
             <div className="text-center mb-8">
                 <h2 className="text-2xl font-bold mb-2">Create Account</h2>
-                <p className="text-secondary text-sm">Join our smart parking community</p>
+                <p className="text-secondary text-sm">Join our smart parking community as a driver</p>
             </div>
 
             {error && (
@@ -98,21 +96,6 @@ const Register = () => {
                         />
                     </div>
                 </div>
-
-                <div className="space-y-2">
-                    <label className="label">I am a...</label>
-                    <div className="relative">
-                        <select
-                            name="role"
-                            className="input-field pl-10 appearance-none cursor-pointer"
-                            value={formData.role}
-                            onChange={handleChange}
-                        >
-                            <option value="DRIVER">Driver</option>
-                            <option value="PARKING_MANAGER">Parking Manager</option>
-                        </select>
-                    </div>
-                </div>
             </div>
 
             <button
@@ -132,7 +115,11 @@ const Register = () => {
                 )}
             </button>
 
-            <p className="text-center mt-6 text-sm text-secondary">
+            <p className="text-center mt-4 text-xs text-muted" style={{ lineHeight: 1.5 }}>
+                Signing up as a <strong style={{ color: 'var(--accent-secondary)' }}>Driver</strong>. For other roles, contact your system administrator.
+            </p>
+
+            <p className="text-center mt-4 text-sm text-secondary">
                 Already have an account? <Link to="/login" className="text-accent font-medium hover:underline">Sign in</Link>
             </p>
         </form>

@@ -152,8 +152,14 @@ public class AdminController {
         String password = request.get("password");
         String roleStr = request.get("role");
 
-        if (username == null || email == null || password == null || roleStr == null) {
-            return ResponseEntity.badRequest().body(java.util.Map.of("message", "All fields are required"));
+        // Default password is 123456 if not provided by admin
+        if (password == null || password.isEmpty()) {
+            password = "123456";
+        }
+
+        if (username == null || email == null || roleStr == null) {
+            return ResponseEntity.badRequest()
+                    .body(java.util.Map.of("message", "Username, email, and role are required"));
         }
 
         // Only allow creating PARKING_MANAGER or CITY_ADMIN

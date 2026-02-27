@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useNotifications } from "../context/NotificationContext";
 import {
     LayoutDashboard,
     MapPin,
     LogOut,
     Menu,
+    X,
     History,
     FileText,
     Building2,
@@ -13,7 +15,6 @@ import {
     Map,
     Bell,
     User,
-    ChevronDown,
     LogIn,
     Settings
 } from "lucide-react";
@@ -22,33 +23,18 @@ import "react-toastify/dist/ReactToastify.css";
 
 const MainLayout = () => {
     const { user, logout } = useAuth();
+    const { unreadCount } = useNotifications();
     const location = useLocation();
     const navigate = useNavigate();
-    const [sidebarOpen, setSidebarOpen] = useState(true);
-    const [profileOpen, setProfileOpen] = useState(false);
-    const profileRef = useRef(null);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
 
     const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
-    const toggleProfile = () => setProfileOpen(!profileOpen);
 
     const isActive = (path) => location.pathname === path;
-
-    // Handle clicks outside profile dropdown
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (profileRef.current && !profileRef.current.contains(event.target)) {
-                setProfileOpen(false);
-            }
-        };
-
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
 
     const handleLogout = () => {
         logout();
         navigate("/login");
-        setProfileOpen(false);
     };
 
     // Determine navigation based on role
@@ -91,7 +77,6 @@ const MainLayout = () => {
             ];
         }
 
-        // Fallback for any authenticated user
         return [
             { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={20} /> },
             { name: "Find Parking", path: "/find-parking", icon: <MapPin size={20} /> },
@@ -101,44 +86,62 @@ const MainLayout = () => {
     const navItems = getNavItems();
 
     return (
-        <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+        <div className="flex" style={{ height: '100vh', overflow: 'hidden', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
 
-            {/* Mobile Sidebar Overlay */}
+            {/* Backdrop overlay when sidebar is open */}
             {sidebarOpen && (
                 <div
-                    className="fixed inset-0 z-20 backdrop-blur-sm lg:hidden"
+                    className="fixed inset-0 z-20 backdrop-blur-sm"
                     style={{ background: 'rgba(10, 15, 26, 0.7)' }}
                     onClick={() => setSidebarOpen(false)}
                 ></div>
             )}
 
-            {/* Sidebar */}
+            {/* Sidebar - fixed height, appears/disappears on toggle */}
             <aside
-                className={`fixed lg:static inset-y-0 left-0 z-30 w-64 transform transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
                 style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    bottom: 0,
+                    width: '260px',
+                    zIndex: 30,
                     background: 'var(--bg-secondary)',
                     borderRight: '1px solid var(--glass-border)',
-
+                    display: 'flex',
                     flexDirection: 'column',
-                    // Logic: If sidebarOpen is true, we show it. If false, we hide it via translation.
-                    // But for desktop layout flow, we also need to control if it takes space or not if we want it "collapsible" in layout too.
-                    // Given the current CSS classes, "fixed lg:static" means it takes space on desktop.
-                    // If we want it to DISAPPEAR on desktop, we should probably switch to absolute/fixed or handle width. 
-                    // However, standard toggle behavior is just hiding. 
-                    display: sidebarOpen ? 'flex' : 'none'
+                    height: '100vh',
+                    transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+                    transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 }}
             >
-                {/* Logo */}
-                <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--glass-border)' }}>
-                    <Link to="/" className="flex items-center gap-2" onClick={() => setSidebarOpen(false)}>
-                        <div className="w-10 h-10 rounded-lg flex-center" style={{ background: 'var(--accent-gradient)' }}>
-                            <MapPin size={20} className="text-white" />
+                {/* Sidebar Header with close (hamburger) button */}
+                <div style={{
+                    padding: '1rem 1.25rem',
+                    borderBottom: '1px solid var(--glass-border)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    height: '64px',
+                    flexShrink: 0,
+                }}>
+                    <Link to="/" className="flex items-center gap-2" onClick={() => setSidebarOpen(false)} style={{ textDecoration: 'none' }}>
+                        <div className="w-8 h-8 rounded-lg flex-center" style={{ background: 'var(--accent-gradient)' }}>
+                            <MapPin size={16} className="text-white" />
                         </div>
-                        <span className="text-xl font-bold gradient-text">EDITH</span>
+                        <span className="text-lg font-bold gradient-text">EDITH</span>
                     </Link>
+                    <button
+                        onClick={toggleSidebar}
+                        className="btn btn-ghost btn-icon"
+                        style={{ padding: '0.5rem' }}
+                        title="Close menu"
+                    >
+                        <X size={22} />
+                    </button>
                 </div>
 
-                {/* Navigation */}
+                {/* Navigation - scrollable area */}
                 <nav style={{ flex: 1, padding: '1rem', overflowY: 'auto' }}>
                     <ul style={{ listStyle: 'none' }}>
                         {navItems.map((item) => (
@@ -146,10 +149,7 @@ const MainLayout = () => {
                                 <Link
                                     to={item.path}
                                     onClick={() => setSidebarOpen(false)}
-                                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${isActive(item.path)
-                                        ? 'bg-accent-primary text-white'
-                                        : 'text-secondary hover:bg-glass-bg-light hover:text-primary'
-                                        }`}
+                                    className="flex items-center gap-3 px-4 py-3 rounded-lg transition-all"
                                     style={{
                                         textDecoration: 'none',
                                         color: isActive(item.path) ? '#fff' : 'var(--text-secondary)',
@@ -164,9 +164,13 @@ const MainLayout = () => {
                     </ul>
                 </nav>
 
-                {/* User & Logout - Only show if logged in */}
+                {/* User & Logout - pinned to bottom, never scrolls away */}
                 {user && (
-                    <div style={{ padding: '1rem', borderTop: '1px solid var(--glass-border)' }}>
+                    <div style={{
+                        padding: '1rem',
+                        borderTop: '1px solid var(--glass-border)',
+                        flexShrink: 0,
+                    }}>
                         <div className="flex items-center gap-3 mb-3 px-2">
                             <div className="avatar block">
                                 {user?.username?.charAt(0).toUpperCase()}
@@ -180,7 +184,7 @@ const MainLayout = () => {
                         </div>
 
                         <button
-                            onClick={handleLogout}
+                            onClick={() => { handleLogout(); setSidebarOpen(false); }}
                             className="btn btn-danger w-full"
                         >
                             <LogOut size={18} />
@@ -190,8 +194,8 @@ const MainLayout = () => {
                 )}
 
                 {!user && (
-                    <div style={{ padding: '1rem', borderTop: '1px solid var(--glass-border)' }}>
-                        <Link to="/login" className="btn btn-primary w-full">
+                    <div style={{ padding: '1rem', borderTop: '1px solid var(--glass-border)', flexShrink: 0 }}>
+                        <Link to="/login" className="btn btn-primary w-full" onClick={() => setSidebarOpen(false)}>
                             <LogIn size={18} />
                             Sign In
                         </Link>
@@ -199,8 +203,8 @@ const MainLayout = () => {
                 )}
             </aside>
 
-            {/* Main Content */}
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+            {/* Main Content - takes full width since sidebar is overlay */}
+            <div className="flex-1 flex flex-col min-w-0" style={{ overflow: 'hidden' }}>
                 {/* Header */}
                 <header style={{
                     height: '64px',
@@ -209,32 +213,57 @@ const MainLayout = () => {
                     alignItems: 'center',
                     padding: '0 1.5rem',
                     justifyContent: 'space-between',
-                    background: 'var(--bg-secondary)'
+                    background: 'var(--bg-secondary)',
+                    flexShrink: 0,
                 }}>
-                    {/* Mobile menu button */}
+                    {/* Left: Hamburger menu button (visible when sidebar closed) */}
                     <button
-                        className="btn btn-ghost btn-icon" // Removed lg:hidden
+                        className="btn btn-ghost btn-icon"
                         onClick={toggleSidebar}
+                        title="Open menu"
                     >
                         <Menu size={24} />
                     </button>
 
-                    {/* Page title - dynamic based on route */}
-                    <div className="hidden lg:block">
-                        <h1 className="text-lg font-semibold">
-                            {navItems.find(item => item.path === location.pathname)?.name || 'Dashboard'}
-                        </h1>
+                    {/* Center: Logo & App Name */}
+                    <div className="flex items-center gap-2" style={{
+                        position: 'absolute',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                    }}>
+                        <div className="w-8 h-8 rounded-lg flex-center" style={{ background: 'var(--accent-gradient)' }}>
+                            <MapPin size={16} className="text-white" />
+                        </div>
+                        <span className="text-lg font-bold gradient-text">EDITH</span>
                     </div>
 
                     {/* Right side actions */}
                     <div className="flex items-center gap-4">
                         {user ? (
                             <>
-                                {/* Notification bell */}
-                                <Link to="/notifications" className="btn btn-ghost btn-icon relative hidden sm:flex">
+                                {/* Notification bell with unread count */}
+                                <Link to="/notifications" className="btn btn-ghost btn-icon relative" style={{ position: 'relative' }}>
                                     <Bell size={20} />
-                                    {/* Ideally count comes from context, but keeping it simple pulse for yes/no or just always pulse if unread */}
-                                    <span className="notification-dot pulse"></span>
+                                    {unreadCount > 0 && (
+                                        <span style={{
+                                            position: 'absolute',
+                                            top: '4px',
+                                            right: '4px',
+                                            width: '18px',
+                                            height: '18px',
+                                            borderRadius: '50%',
+                                            background: 'var(--danger)',
+                                            color: '#fff',
+                                            fontSize: '0.65rem',
+                                            fontWeight: '700',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            lineHeight: 1,
+                                        }}>
+                                            {unreadCount > 9 ? '9+' : unreadCount}
+                                        </span>
+                                    )}
                                 </Link>
                             </>
                         ) : (
