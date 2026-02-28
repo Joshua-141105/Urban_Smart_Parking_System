@@ -21,25 +21,25 @@ const Home = () => {
             icon: <MapPin size={28} />,
             title: "Real-Time Availability",
             description: "View live parking space availability across the city with our smart IoT sensors.",
-            color: "from-emerald-500 to-teal-600"
+            gradient: 'linear-gradient(135deg, #10b981, #0d9488)'
         },
         {
             icon: <Clock size={28} />,
             title: "Smart Navigation",
             description: "Get the fastest route to available parking with real-time traffic integration.",
-            color: "from-blue-500 to-indigo-600"
+            gradient: 'linear-gradient(135deg, #3b82f6, #4f46e5)'
         },
         {
             icon: <CreditCard size={28} />,
             title: "Seamless Payments",
             description: "Pay digitally with multiple options. No more fumbling for change.",
-            color: "from-purple-500 to-pink-600"
+            gradient: 'linear-gradient(135deg, #a855f7, #db2777)'
         },
         {
             icon: <TrendingUp size={28} />,
             title: "Dynamic Pricing",
             description: "Fair pricing based on demand. Save money during off-peak hours.",
-            color: "from-orange-500 to-red-600"
+            gradient: 'linear-gradient(135deg, #f97316, #dc2626)'
         }
     ];
 
@@ -50,32 +50,43 @@ const Home = () => {
         { value: "98%", label: "User Satisfaction", icon: <BarChart3 size={24} /> }
     ];
 
+    // Shared container style - fluid width, no fixed pixel max-width
+    const sectionPad = {
+        paddingLeft: '5%',
+        paddingRight: '5%',
+    };
+
     return (
-        <div className="min-h-screen mesh-gradient">
+        <div style={{ minHeight: '100vh', width: '100%' }} className="mesh-gradient">
             {/* Navigation */}
-            <nav className="fixed top-0 left-0 right-0 z-50 glass-panel" style={{ borderRadius: 0, borderLeft: 'none', borderRight: 'none', borderTop: 'none' }}>
-                <div className="container-wide flex-between py-4">
-                    <Link to="/" className="flex items-center gap-2">
-                        <div className="w-10 h-10 rounded-lg flex-center" style={{ background: 'var(--accent-gradient)' }}>
-                            <Car size={24} className="text-white" />
+            <nav className="glass-panel" style={{
+                position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50,
+                borderRadius: 0, borderLeft: 'none', borderRight: 'none', borderTop: 'none',
+            }}>
+                <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '1vw 5%',
+                }}>
+                    <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.5vw', textDecoration: 'none' }}>
+                        <div style={{
+                            width: '3vw', height: '3vw', minWidth: '28px', minHeight: '28px',
+                            maxWidth: '44px', maxHeight: '44px',
+                            borderRadius: '0.5vw', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: 'var(--accent-gradient)',
+                        }}>
+                            <Car style={{ width: '1.5vw', height: '1.5vw', minWidth: '14px', minHeight: '14px', maxWidth: '24px', maxHeight: '24px' }} className="text-white" />
                         </div>
-                        <span className="text-2xl font-bold gradient-text">EDITH</span>
+                        <span className="gradient-text" style={{ fontSize: 'max(1vw, 14px)', fontWeight: 700 }}>EDITH</span>
                     </Link>
 
-                    <div className="flex items-center gap-4">
-                        {user ? (
-                            <Link to="/dashboard" className="btn btn-primary">
-                                Go to Dashboard
-                                <ArrowRight size={18} />
-                            </Link>
-                        ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8vw' }}>
+                        {!user && (
                             <>
-                                <Link to="/login" className="btn btn-ghost">
+                                <Link to="/login" className="btn btn-ghost" style={{ fontSize: 'max(0.9vw, 12px)', padding: 'max(0.5vw, 6px) max(1.2vw, 12px)' }}>
                                     Sign In
                                 </Link>
-                                <Link to="/register" className="btn btn-primary">
-                                    Get Started
-                                    <ArrowRight size={18} />
+                                <Link to="/register" className="btn btn-primary" style={{ fontSize: 'max(0.9vw, 12px)', padding: 'max(0.5vw, 6px) max(1.2vw, 12px)' }}>
+                                    Get Started <ArrowRight style={{ width: 'max(1vw, 14px)', height: 'max(1vw, 14px)' }} />
                                 </Link>
                             </>
                         )}
@@ -84,186 +95,241 @@ const Home = () => {
             </nav>
 
             {/* Hero Section */}
-            <section className="pt-32 pb-22 px-6 relative overflow-hidden">
+            <section style={{
+                paddingTop: '10vw',
+                paddingBottom: '5vw',
+                ...sectionPad,
+                position: 'relative', overflow: 'hidden',
+            }}>
                 {/* Background effects */}
-                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl"></div>
-                <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl"></div>
+                <div style={{
+                    position: 'absolute', top: '15%', left: '15%',
+                    width: '25vw', height: '25vw',
+                    background: 'rgba(99, 102, 241, 0.15)', borderRadius: '50%', filter: 'blur(80px)',
+                }}></div>
+                <div style={{
+                    position: 'absolute', bottom: '15%', right: '15%',
+                    width: '25vw', height: '25vw',
+                    background: 'rgba(139, 92, 246, 0.15)', borderRadius: '50%', filter: 'blur(80px)',
+                }}></div>
 
-                <div className="container-wide text-center relative">
-                    <div className="animate-fade-in-up">
-                        <span className="badge badge-info mb-6">
-                            <Zap size={14} className="mr-1" />
-                            Smart City Solution
-                        </span>
+                <div style={{ maxWidth: '65vw', margin: '0 auto', textAlign: 'center', position: 'relative' }}>
+                    <span className="badge badge-info" style={{ marginBottom: '1.5vw', display: 'inline-flex', fontSize: 'max(0.85vw, 13px)', padding: 'max(0.4vw, 5px) max(1vw, 10px)' }}>
+                        <Zap style={{ width: 'max(0.8vw, 12px)', height: 'max(0.8vw, 12px)', marginRight: '0.3vw' }} />
+                        Smart City Solution
+                    </span>
 
-                        <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
-                            Urban Smart Parking
-                            <br />
-                            <span className="gradient-text">Reimagined</span>
-                        </h1>
-
-                        <p className="text-xl text-secondary max-w-2xl mx-auto mb-10">
-                            EDITH transforms urban parking with real-time availability, intelligent routing,
-                            and dynamic pricing — reducing traffic congestion by up to 30%.
-                        </p>
-
+                    <h1 style={{
+                        fontSize: 'max(4vw, 28px)',
+                        fontWeight: 700, lineHeight: 1.15,
+                        marginBottom: '1.5vw',
+                        fontFamily: 'var(--font-main)',
+                    }}>
+                        Urban Smart Parking
                         <br />
+                        <span className="gradient-text">Reimagined</span>
+                    </h1>
 
-                        <div className="flex flex-wrap justify-center gap-6 mb-10">
-                            <Link to={user ? "/find-parking" : "/register"} className="btn btn-primary btn-lg animate-glow">
-                                <MapPin size={20} />
-                                Find Parking Now
+                    <p style={{
+                        fontSize: 'max(1.3vw, 15px)',
+                        color: 'var(--text-secondary)', lineHeight: 1.7,
+                        maxWidth: '50vw', margin: '0 auto',
+                        marginBottom: '2.5vw',
+                    }}>
+                        EDITH transforms urban parking with real-time availability, intelligent routing,
+                        and dynamic pricing — reducing traffic congestion by up to 30%.
+                    </p>
+
+                    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 'max(1vw, 8px)' }}>
+                        <Link to={user ? "/find-parking" : "/register"} className="btn btn-primary animate-glow" style={{
+                            fontSize: 'max(1.1vw, 14px)',
+                            padding: 'max(0.8vw, 10px) max(2vw, 20px)',
+                        }}>
+                            <MapPin style={{ width: 'max(1.1vw, 14px)', height: 'max(1.1vw, 14px)' }} />
+                            Find Parking Now
+                        </Link>
+                        <a href="#features" className="btn btn-secondary" style={{
+                            fontSize: 'max(1.1vw, 14px)',
+                            padding: 'max(0.8vw, 10px) max(2vw, 20px)',
+                        }}>
+                            Learn More
+                        </a>
+                    </div>
+
+                    {/* Go to Dashboard */}
+                    {user && (
+                        <div style={{ marginTop: '1.5vw' }}>
+                            <Link to="/dashboard" className="btn btn-primary" style={{
+                                padding: 'max(0.7vw, 8px) max(2vw, 20px)',
+                                fontSize: 'max(1vw, 13px)',
+                                boxShadow: '0 0.5vw 2vw rgba(99, 102, 241, 0.4)',
+                            }}>
+                                Go to Dashboard <ArrowRight style={{ width: 'max(1.1vw, 14px)', height: 'max(1.1vw, 14px)' }} />
                             </Link>
-                            <a href="#features" className="btn btn-secondary btn-lg">
-                                Learn More
-                            </a>
                         </div>
-                        <br />
-                    </div>
-
-                    {/* Hero image placeholder - animated map preview */}
-                    <div className="mt-12 animate-fade-in delay-300">
-                        <div className="glass-panel p-4 max-w-4xl mx-auto">
-                            <div className="aspect-video rounded-lg overflow-hidden relative" style={{ background: 'linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%)' }}>
-                                {/* Simulated map with animated markers */}
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <div className="relative w-full h-full">
-                                        {/* Grid lines */}
-                                        <div className="absolute inset-0" style={{
-                                            backgroundImage: 'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)',
-                                            backgroundSize: '50px 50px'
-                                        }}></div>
-
-                                        {/* Animated parking markers */}
-                                        {/* Status Bar */}
-                                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 glass-card-static py-3 px-8 w-fit flex items-center justify-center gap-4 whitespace-nowrap">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
-                                                <span className="text-sm font-medium">Available: <span className="text-white ml-1">35</span></span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-3 h-3 rounded-full bg-yellow-500 animate-pulse delay-100"></div>
-                                                <span className="text-sm font-medium">Filling: <span className="text-white ml-1">5</span></span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-3 h-3 rounded-full bg-orange-500 animate-pulse delay-200"></div>
-                                                <span className="text-sm font-medium">Busy: <span className="text-white ml-1">2</span></span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse delay-300"></div>
-                                                <span className="text-sm font-medium">Full: <span className="text-white ml-1">0</span></span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    )}
                 </div>
             </section>
 
             {/* Stats Section */}
-            <section className="py-20 px-6">
-                <div className="container-wide">
-                    <div className="max-w-7xl mx-auto grid grid-cols-4 gap-8">
-                        {stats.map((stat, index) => (
-                            <div
-                                key={index}
-                                className="stat-card flex items-center gap-4 animate-fade-in-up"
-                                style={{ animationDelay: `${index * 0.1}s` }}
-                            >
-                                <div className="stat-icon mb-0" style={{ background: 'rgba(99, 102, 241, 0.15)', color: 'var(--accent-secondary)' }}>
-                                    {stat.icon}
-                                </div>
-                                <div className="text-left">
-                                    <div className="stat-value gradient-text text-2xl md:text-3xl">{stat.value}</div>
-                                    <div className="stat-label">{stat.label}</div>
-                                </div>
+            <section style={{ paddingTop: '4vw', paddingBottom: '4vw', ...sectionPad }}>
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(4, 1fr)',
+                    gap: 'max(1.2vw, 10px)',
+                }}>
+                    {stats.map((stat, index) => (
+                        <div
+                            key={index}
+                            className="stat-card animate-fade-in-up"
+                            style={{
+                                animationDelay: `${index * 0.1}s`,
+                                padding: 'max(1.2vw, 12px)',
+                                display: 'flex', alignItems: 'center', gap: 'max(0.8vw, 8px)',
+                            }}
+                        >
+                            <div style={{
+                                width: 'max(3vw, 32px)', height: 'max(3vw, 32px)',
+                                borderRadius: '0.6vw', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                background: 'rgba(99, 102, 241, 0.15)', color: 'var(--accent-secondary)', flexShrink: 0,
+                            }}>
+                                {stat.icon}
                             </div>
-                        ))}
-                    </div>
+                            <div>
+                                <div className="gradient-text" style={{
+                                    fontSize: 'max(1.6vw, 16px)',
+                                    fontWeight: 700, fontFamily: 'var(--font-main)', lineHeight: 1, marginBottom: '0.3vw',
+                                }}>{stat.value}</div>
+                                <div style={{ fontSize: 'max(0.8vw, 10px)', color: 'var(--text-secondary)' }}>{stat.label}</div>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </section>
 
             {/* Features Section */}
-            <section id="features" className="py-20 px-6">
-                <div className="container-wide">
-                    <div className="text-center mb-16 animate-fade-in md:mb-20">
-                        <h2 className="text-4xl font-bold mb-6 md-8">
-                            Why Choose <span className="gradient-text">EDITH</span>?
-                        </h2>
-                        <p className="text-secondary text-lg max-w-2xl mx-auto md:text-xl">
-                            Our platform combines cutting-edge technology with user-friendly design
-                            to solve urban parking challenges.
-                        </p>
-                        <br></br>
-                    </div>
+            <section id="features" style={{ paddingTop: '4vw', paddingBottom: '4vw', ...sectionPad }}>
+                <div style={{ textAlign: 'center', marginBottom: '3vw' }} className="animate-fade-in">
+                    <h2 style={{
+                        fontSize: 'max(2.2vw, 18px)',
+                        fontWeight: 700, marginBottom: 'max(0.8vw, 6px)',
+                        fontFamily: 'var(--font-main)',
+                    }}>
+                        Why Choose <span className="gradient-text">EDITH</span>?
+                    </h2>
+                    <p style={{
+                        fontSize: 'max(1vw, 12px)',
+                        color: 'var(--text-secondary)', maxWidth: '45vw', margin: '0 auto', lineHeight: 1.7,
+                    }}>
+                        Our platform combines cutting-edge technology with user-friendly design
+                        to solve urban parking challenges.
+                    </p>
+                </div>
 
-                    <div className="max-w-7xl mx-auto grid grid-cols-2 gap-8">
-                        {features.map((feature, index) => (
-                            <div
-                                key={index}
-                                className="glass-card p-6 flex items-center gap-4 animate-fade-in-up"
-                                style={{ animationDelay: `${index * 0.15}s` }}
-                            >
-                                <div
-                                    className="w-14 h-14 rounded-xl flex-center flex-shrink-0 text-white"
-                                    style={{ background: `linear-gradient(135deg, ${feature.color.split(' ')[0].replace('from-', '')} 0%, ${feature.color.split(' ')[1]?.replace('to-', '') || feature.color.split(' ')[0].replace('from-', '')} 100%)`.replace('emerald-500', '#10b981').replace('teal-600', '#0d9488').replace('blue-500', '#3b82f6').replace('indigo-600', '#4f46e5').replace('purple-500', '#a855f7').replace('pink-600', '#db2777').replace('orange-500', '#f97316').replace('red-600', '#dc2626') }}
-                                >
-                                    {feature.icon}
-                                </div>
-                                <div>
-                                    <h3 className="text-xl font-semibold mb-1">{feature.title}</h3>
-                                    <p className="text-secondary text-sm md:text-base leading-relaxed">{feature.description}</p>
-                                </div>
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(4, 1fr)',
+                    gap: 'max(1.2vw, 10px)',
+                }}>
+                    {features.map((feature, index) => (
+                        <div
+                            key={index}
+                            className="glass-card animate-fade-in-up"
+                            style={{
+                                padding: 'max(1.5vw, 14px)',
+                                animationDelay: `${index * 0.15}s`,
+                                display: 'flex', flexDirection: 'column', gap: 'max(0.8vw, 8px)',
+                            }}
+                        >
+                            <div style={{
+                                width: 'max(3.2vw, 36px)', height: 'max(3.2vw, 36px)',
+                                borderRadius: '0.7vw', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                background: feature.gradient, color: '#fff', flexShrink: 0,
+                            }}>
+                                {feature.icon}
                             </div>
-                        ))}
-                    </div>
+                            <div>
+                                <h3 style={{
+                                    fontSize: 'max(1.1vw, 13px)',
+                                    fontWeight: 600, marginBottom: '0.3vw',
+                                    fontFamily: 'var(--font-main)',
+                                }}>{feature.title}</h3>
+                                <p style={{
+                                    fontSize: 'max(0.85vw, 11px)',
+                                    color: 'var(--text-secondary)', lineHeight: 1.6,
+                                }}>{feature.description}</p>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </section>
 
             {/* CTA Section */}
-            <section className="py-20 px-6">
-                <div className="container-wide">
-                    <div className="glass-panel p-12 text-center relative overflow-hidden">
-                        {/* Background glow */}
-                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-48 bg-indigo-500/20 rounded-full blur-3xl"></div>
+            <section style={{ paddingTop: '4vw', paddingBottom: '4vw', ...sectionPad }}>
+                <div className="glass-panel" style={{
+                    padding: 'max(3.5vw, 24px) max(2.5vw, 16px)',
+                    textAlign: 'center', position: 'relative', overflow: 'hidden',
+                }}>
+                    {/* Background glow */}
+                    <div style={{
+                        position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+                        width: '30vw', height: '15vw',
+                        background: 'rgba(99, 102, 241, 0.15)', borderRadius: '50%', filter: 'blur(60px)',
+                    }}></div>
 
-                        <div className="relative">
-                            <Shield size={48} className="mx-auto mb-6 text-accent" />
-                            <h2 className="text-3xl font-bold mb-4">Ready to Transform Your Parking Experience?</h2>
-                            <p className="text-secondary max-w-xl mx-auto mb-8">
-                                Join thousands of smart drivers who save time, money, and frustration with EDITH.
-                            </p>
-                            <Link to={user ? "/find-parking" : "/register"} className="btn btn-primary btn-lg">
-                                Get Started Free
-                                <ArrowRight size={20} />
-                            </Link>
-                        </div>
+                    <div style={{ position: 'relative' }}>
+                        <Shield style={{ width: 'max(2.5vw, 28px)', height: 'max(2.5vw, 28px)', margin: '0 auto', marginBottom: '1.5vw', color: 'var(--accent-secondary)' }} />
+                        <h2 style={{
+                            fontSize: 'max(1.8vw, 16px)',
+                            fontWeight: 700, marginBottom: 'max(0.8vw, 6px)',
+                            fontFamily: 'var(--font-main)',
+                        }}>Ready to Transform Your Parking Experience?</h2>
+                        <p style={{
+                            color: 'var(--text-secondary)', maxWidth: '40vw', margin: '0 auto',
+                            marginBottom: '2vw', lineHeight: 1.7,
+                            fontSize: 'max(0.9vw, 11px)',
+                        }}>
+                            Join thousands of smart drivers who save time, money, and frustration with EDITH.
+                        </p>
+                        <Link to={user ? "/find-parking" : "/register"} className="btn btn-primary" style={{
+                            fontSize: 'max(0.95vw, 12px)',
+                            padding: 'max(0.7vw, 8px) max(1.8vw, 16px)',
+                        }}>
+                            Get Started Free <ArrowRight style={{ width: 'max(1.1vw, 14px)', height: 'max(1.1vw, 14px)' }} />
+                        </Link>
                     </div>
                 </div>
             </section>
 
             {/* Footer */}
-            <footer className="py-12 px-6 border-t border-glass-border">
-                <div className="container-wide">
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-                        <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg flex-center" style={{ background: 'var(--accent-gradient)' }}>
-                                <Car size={18} className="text-white" />
-                            </div>
-                            <span className="text-lg font-bold gradient-text">EDITH</span>
+            <footer style={{
+                borderTop: '1px solid var(--glass-border)',
+                padding: 'max(2.5vw, 16px) 5%',
+                marginTop: '2vw',
+            }}>
+                <div style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    gap: 'max(1vw, 8px)', textAlign: 'center',
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5vw' }}>
+                        <div style={{
+                            width: 'max(2vw, 24px)', height: 'max(2vw, 24px)',
+                            borderRadius: '0.4vw', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: 'var(--accent-gradient)',
+                        }}>
+                            <Car style={{ width: 'max(1.1vw, 12px)', height: 'max(1.1vw, 12px)' }} className="text-white" />
                         </div>
+                        <span className="gradient-text" style={{ fontSize: 'max(1vw, 13px)', fontWeight: 700 }}>EDITH</span>
+                    </div>
 
-                        <p className="text-muted text-sm">
-                            © 2026 EDITH Smart Parking System. Urban Traffic Management Solution.
-                        </p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: 'max(0.8vw, 10px)' }}>
+                        © 2026 EDITH Smart Parking System. Urban Traffic Management Solution.
+                    </p>
 
-                        <div className="flex gap-6 text-muted text-sm">
-                            <a href="#" className="hover:text-primary">Privacy</a>
-                            <a href="#" className="hover:text-primary">Terms</a>
-                            <a href="#" className="hover:text-primary">Contact</a>
-                        </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'max(1.5vw, 12px)' }}>
+                        <a href="#" style={{ color: 'var(--text-muted)', fontSize: 'max(0.8vw, 10px)', transition: 'color 0.2s', textDecoration: 'none' }}>Privacy</a>
+                        <a href="#" style={{ color: 'var(--text-muted)', fontSize: 'max(0.8vw, 10px)', transition: 'color 0.2s', textDecoration: 'none' }}>Terms</a>
+                        <a href="#" style={{ color: 'var(--text-muted)', fontSize: 'max(0.8vw, 10px)', transition: 'color 0.2s', textDecoration: 'none' }}>Contact</a>
                     </div>
                 </div>
             </footer>

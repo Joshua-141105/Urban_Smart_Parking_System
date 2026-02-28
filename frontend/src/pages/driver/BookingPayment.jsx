@@ -266,7 +266,7 @@ const BookingPayment = () => {
                 <div className="glass-panel p-6">
                     <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                         <Car size={20} />
-                        Select Parking Space
+                        Floor Plan
                     </h3>
 
                     {error && (
@@ -276,58 +276,134 @@ const BookingPayment = () => {
                         </div>
                     )}
 
-                    <div className="mb-6" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '0.75rem' }}>
-                        {spaces.length > 0 ? spaces.map((space) => (
-                            <button
-                                key={space.id}
-                                className={`aspect-[3/2] rounded-xl flex items-center justify-center text-sm font-bold transition-all duration-200 border-2 shadow-sm ${space.isOccupied
-                                    ? 'bg-rose-500/10 text-rose-500 border-rose-500/30 cursor-not-allowed'
-                                    : (lockUpdates && lockUpdates[space.id])
-                                        ? 'bg-amber-500/10 text-amber-500 border-amber-500/30 cursor-not-allowed'
-                                        : selectedSpace?.id === space.id
-                                            ? 'shadow-[0_0_15px_rgba(37,99,235,0.5)] scale-[1.02]'
-                                            : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/20 hover:border-emerald-500/50 hover:-translate-y-1 hover:shadow-md'
-                                    }`}
-                                onClick={() => handleSelectSpace(space)}
-                                disabled={space.isOccupied || isSpaceLocked}
-                                style={selectedSpace?.id === space.id ? { backgroundColor: '#2563eb', borderColor: '#2563eb', color: 'white' } : {}}
-                            >
-                                {space.spaceNumber}
-                            </button>
-                        )) : (
-                            // Demo spaces
-                            Array.from({ length: 20 }, (_, i) => (
+                    <div className="mb-6" style={{ 
+                        display: 'flex', 
+                        flexWrap: 'wrap',
+                        justifyContent: 'center',
+                        gap: '0.4rem'
+                    }}>
+                        {spaces.length > 0 ? spaces.map((space) => {
+                            const isOccupied = space.isOccupied;
+                            const isLocked = lockUpdates && lockUpdates[space.id];
+                            const isSelected = selectedSpace?.id === space.id;
+                            
+                            let bgColor = '#c8e6c9'; // Available - light green
+                            let borderColor = '#a5d6a7';
+                            let textColor = '#2e7d32';
+                            
+                            if (isOccupied || isLocked) {
+                                bgColor = '#ffcdd2'; // Filled - light red/pink
+                                borderColor = '#ef9a9a';
+                                textColor = '#c62828';
+                            } else if (isSelected) {
+                                bgColor = '#bbdefb'; // Selected - light blue
+                                borderColor = '#1976d2';
+                                textColor = '#1565c0';
+                            }
+                            
+                            return (
                                 <button
-                                    key={i}
-                                    className={`aspect-[3/2] rounded-xl flex items-center justify-center text-sm font-bold transition-all duration-200 border-2 shadow-sm ${i % 5 === 0
-                                        ? 'bg-rose-500/10 text-rose-500 border-rose-500/30 cursor-not-allowed'
-                                        : selectedSpace?.id === i + 1
-                                            ? 'shadow-[0_0_15px_rgba(37,99,235,0.5)] scale-[1.02]'
-                                            : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/20 hover:border-emerald-500/50 hover:-translate-y-1 hover:shadow-md'
-                                        }`}
-                                    onClick={() => i % 5 !== 0 && handleSelectSpace({ id: i + 1, spaceNumber: `A${i + 1}` })}
-                                    disabled={i % 5 === 0 || isSpaceLocked}
-                                    style={selectedSpace?.id === i + 1 ? { backgroundColor: '#2563eb', borderColor: '#2563eb', color: 'white' } : {}}
+                                    key={space.id}
+                                    onClick={() => handleSelectSpace(space)}
+                                    disabled={isOccupied || isSpaceLocked || isLocked}
+                                    style={{
+                                        width: '90px',
+                                        height: '90px',
+                                        backgroundColor: bgColor,
+                                        border: `2px solid ${borderColor}`,
+                                        borderRadius: '6px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        cursor: isOccupied || isLocked ? 'not-allowed' : 'pointer',
+                                        transition: 'all 0.2s ease',
+                                        boxShadow: isSelected ? '0 0 0 3px #1976d2' : 'none',
+                                        fontSize: '15px',
+                                        fontWeight: '600',
+                                        color: textColor,
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (!isOccupied && !isLocked) {
+                                            e.currentTarget.style.transform = 'scale(1.05)';
+                                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = 'scale(1)';
+                                        e.currentTarget.style.boxShadow = isSelected ? '0 0 0 3px #1976d2' : 'none';
+                                    }}
                                 >
-                                    A{i + 1}
+                                    {space.spaceNumber}
                                 </button>
-                            ))
+                            );
+                        }) : (
+                            // Demo spaces - floor plan style
+                            Array.from({ length: 32 }, (_, i) => {
+                                const isOccupied = [0, 1, 2, 5, 6, 7, 8, 10, 11, 13, 14, 15, 16, 17, 19, 20, 21, 22, 23, 25, 26, 27, 28, 29, 30, 31].includes(i);
+                                const isSelected = selectedSpace?.id === i + 1;
+                                
+                                let bgColor = '#c8e6c9'; // Available
+                                let borderColor = '#a5d6a7';
+                                let textColor = '#2e7d32';
+                                
+                                if (isOccupied) {
+                                    bgColor = '#ffcdd2';
+                                    borderColor = '#ef9a9a';
+                                    textColor = '#c62828';
+                                } else if (isSelected) {
+                                    bgColor = '#bbdefb';
+                                    borderColor = '#1976d2';
+                                    textColor = '#1565c0';
+                                }
+                                
+                                return (
+                                    <button
+                                        key={i}
+                                        onClick={() => !isOccupied && handleSelectSpace({ id: i + 1, spaceNumber: `S${i + 1}` })}
+                                        disabled={isOccupied || isSpaceLocked}
+                                        style={{
+                                            width: '90px',
+                                            height: '90px',
+                                            backgroundColor: bgColor,
+                                            border: `2px solid ${borderColor}`,
+                                            borderRadius: '6px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: isOccupied ? 'not-allowed' : 'pointer',
+                                            transition: 'all 0.2s ease',
+                                            boxShadow: isSelected ? '0 0 0 3px #1976d2' : 'none',
+                                            fontSize: '15px',
+                                            fontWeight: '600',
+                                            color: textColor,
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            if (!isOccupied) {
+                                                e.currentTarget.style.transform = 'scale(1.05)';
+                                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                                            }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.transform = 'scale(1)';
+                                            e.currentTarget.style.boxShadow = isSelected ? '0 0 0 3px #1976d2' : 'none';
+                                        }}
+                                    >
+                                        S{i + 1}
+                                    </button>
+                                );
+                            })
                         )}
                     </div>
 
                     {/* Legend */}
-                    <div className="flex gap-6 justify-center mt-6 text-sm font-medium text-secondary">
+                    <div className="flex flex-wrap gap-6 justify-center mt-6 text-sm font-medium" style={{ color: '#666' }}>
                         <div className="flex items-center gap-2">
-                            <div className="w-5 h-5 rounded-md border" style={{ backgroundColor: '#10b981', borderColor: '#10b981', opacity: 0.3 }}></div>
+                            <div style={{ width: '20px', height: '20px', borderRadius: '4px', backgroundColor: '#c8e6c9', border: '2px solid #a5d6a7' }}></div>
                             Available
                         </div>
                         <div className="flex items-center gap-2">
-                            <div className="w-5 h-5 rounded-md border" style={{ backgroundColor: '#f43f5e', borderColor: '#f43f5e', opacity: 0.3 }}></div>
-                            Occupied
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-5 h-5 rounded-md border shadow-sm" style={{ backgroundColor: '#2563eb', borderColor: '#2563eb' }}></div>
-                            Selected
+                            <div style={{ width: '20px', height: '20px', borderRadius: '4px', backgroundColor: '#ffcdd2', border: '2px solid #ef9a9a' }}></div>
+                            Filled
                         </div>
                     </div>
                 </div>

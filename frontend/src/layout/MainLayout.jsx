@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useNotifications } from "../context/NotificationContext";
@@ -27,6 +27,16 @@ const MainLayout = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const [sidebarOpen, setSidebarOpen] = useState(false);
+
+    // Lock body scroll ONLY when sidebar overlay is open
+    useEffect(() => {
+        if (sidebarOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => { document.body.style.overflow = ''; };
+    }, [sidebarOpen]);
 
     const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
@@ -88,14 +98,19 @@ const MainLayout = () => {
     return (
         <div className="flex" style={{ height: '100vh', overflow: 'hidden', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
 
-            {/* Backdrop overlay when sidebar is open */}
-            {sidebarOpen && (
-                <div
-                    className="fixed inset-0 z-20 backdrop-blur-sm"
-                    style={{ background: 'rgba(10, 15, 26, 0.7)' }}
-                    onClick={() => setSidebarOpen(false)}
-                ></div>
-            )}
+            {/* Backdrop overlay with blur transition when sidebar is open */}
+            <div
+                className="fixed inset-0 z-20"
+                style={{
+                    background: sidebarOpen ? 'rgba(10, 15, 26, 0.7)' : 'rgba(10, 15, 26, 0)',
+                    backdropFilter: sidebarOpen ? 'blur(8px)' : 'blur(0px)',
+                    WebkitBackdropFilter: sidebarOpen ? 'blur(8px)' : 'blur(0px)',
+                    opacity: sidebarOpen ? 1 : 0,
+                    pointerEvents: sidebarOpen ? 'auto' : 'none',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                }}
+                onClick={() => setSidebarOpen(false)}
+            ></div>
 
             {/* Sidebar - fixed height, appears/disappears on toggle */}
             <aside
@@ -204,7 +219,7 @@ const MainLayout = () => {
             </aside>
 
             {/* Main Content - takes full width since sidebar is overlay */}
-            <div className="flex-1 flex flex-col min-w-0" style={{ overflow: 'hidden' }}>
+            <div className="flex-1 flex flex-col min-w-0">
                 {/* Header */}
                 <header style={{
                     height: '64px',
@@ -275,8 +290,8 @@ const MainLayout = () => {
                     </div>
                 </header>
 
-                {/* Scrollable Content Area */}
-                <main className="flex-1 overflow-auto p-6 custom-scrollbar">
+                {/* Content Area */}
+                <main className="flex-1 p-6" style={{ overflowY: 'auto' }}>
                     <Outlet />
                 </main>
                 <ToastContainer position="top-right" theme="dark" />

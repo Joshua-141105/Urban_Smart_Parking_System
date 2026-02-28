@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import ParkingMap from "../../components/ParkingMap";
-import { Search, Navigation, Loader2, MapPin, Car, IndianRupee, Clock, RefreshCw, Star } from "lucide-react";
+import { Search, Navigation, Loader2, MapPin, Car, IndianRupee, Clock, RefreshCw, Star, ChevronUp, ChevronDown, X } from "lucide-react";
 import api from "../../api/axios";
 import { useAuth } from "../../context/AuthContext";
 import { useWebSocket } from "../../context/WebSocketContext";
@@ -16,6 +16,7 @@ const FindParking = () => {
     const [selectedLot, setSelectedLot] = useState(null);
     const [isLocating, setIsLocating] = useState(false);
     const [lastUpdated, setLastUpdated] = useState(new Date());
+    const [panelExpanded, setPanelExpanded] = useState(true);
 
     // WebSocket context for real-time updates
     const { occupancyUpdates } = useWebSocket();
@@ -129,9 +130,7 @@ const FindParking = () => {
                     const url = `https://router.project-osrm.org/route/v1/driving/${userLocation[1]},${userLocation[0]};${selectedLot.longitude},${selectedLot.latitude}?overview=full&geometries=geojson`;
                     const res = await fetch(url);
                     const data = await res.json();
-
                     if (data.routes && data.routes.length > 0) {
-                        // Leaflet needs [lat, lon], OSRM returns [lon, lat]
                         const coords = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
                         setRouteCoordinates(coords);
                     }
@@ -167,80 +166,127 @@ const FindParking = () => {
         return { class: 'badge-full', text: 'Full' };
     };
 
-    // Filter lots based on search
+    // Filter and sort lots
     const filteredLots = parkingLots.filter(lot =>
         lot.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
-
-    // Sort by distance
     const sortedLots = [...filteredLots].sort((a, b) => (a.distance || 0) - (b.distance || 0));
 
-    // Pagination Logic
+    // Pagination
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 5;
+    const itemsPerPage = 10;
     const totalPages = Math.ceil(sortedLots.length / itemsPerPage);
-
-    // Reset page on search
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [searchQuery]);
-
+    useEffect(() => { setCurrentPage(1); }, [searchQuery]);
     const startIndex = (currentPage - 1) * itemsPerPage;
     const currentLots = sortedLots.slice(startIndex, startIndex + itemsPerPage);
 
-    // Scroll Refs
-    const listContainerRef = useRef(null);
-
-    // Scroll to top on page change
+    const listRef = useRef(null);
     useEffect(() => {
-        if (listContainerRef.current) {
-            listContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-        }
+        if (listRef.current) listRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     }, [currentPage]);
 
-    // Scroll to selected lot
     useEffect(() => {
         if (selectedLot) {
-            const element = document.getElementById(`lot-${selectedLot.id}`);
-            if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
+            const el = document.getElementById(`lot-${selectedLot.id}`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     }, [selectedLot]);
 
-    return (
-        <div className="page-container">
-            {/* Search Bar */}
-            <div className="glass-panel p-4 mb-6">
-                <div className="flex flex-wrap gap-3 items-center">
-                    <div className="relative flex-1 min-w-[200px]">
-                        <input
-                            type="text"
-                            placeholder="Search by location or lot name..."
-                            className="input-field pl-10 w-full"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
+    // --- Parking Card Component ---
+    const ParkingCard = ({ lot, index }) => {
+        const occupancyPercent = getOccupancyPercent(lot);
+        const status = getStatusBadge(occupancyPercent);
+        const available = lot.availableSlots ?? 0;
+
+        return (
+            <div
+                id={`lot-${lot.id}`}
+                className={`transition-all duration-200 cursor-pointer`}
+                onClick={() => setSelectedLot(lot)}
+                style={{
+                    padding: '1rem',
+                    borderBottom: '1px solid var(--glass-border)',
+                    background: selectedLot?.id === lot.id ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
+                    borderLeft: selectedLot?.id === lot.id ? '3px solid var(--accent-primary)' : '3px solid transparent',
+                }}
+            >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <h4 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.25rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lot.name}</h4>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', gap: '0.75rem' }}>
+                            {lot.distance && (
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                                    <Navigation size={11} /> {lot.distance.toFixed(1)} km
+                                </span>
+                            )}
+                            {lot.eta && (
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                                    <Clock size={11} /> {lot.eta} min
+                                </span>
+                            )}
+                        </p>
                     </div>
-                    <button
-                        className="btn btn-primary"
-                        onClick={handleFindNearest}
-                        disabled={isLocating}
-                    >
-                        {isLocating ? <Loader2 size={18} className="animate-spin" /> : <Navigation size={18} />}
-                        {isLocating ? 'Locating...' : 'Find Nearest'}
-                    </button>
-                    <button className="btn btn-secondary btn-icon" onClick={handleRefresh} title="Refresh">
-                        <RefreshCw size={18} />
-                    </button>
-                    <span className="text-xs text-muted hidden sm:inline">
-                        Updated: {lastUpdated.toLocaleTimeString()}
+                    <span className={`badge ${status.class}`} style={{ fontSize: '0.7rem', flexShrink: 0, marginLeft: '0.5rem' }}>
+                        {status.text}
                     </span>
                 </div>
-            </div>
 
-            {/* Map */}
-            <div className="glass-panel overflow-hidden mb-6 rounded-xl" style={{ height: '45vh', minHeight: '300px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', marginBottom: '0.5rem' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--text-secondary)' }}>
+                        <Car size={13} /> {available}/{lot.totalCapacity}
+                    </span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', color: '#facc15', fontSize: '0.8rem' }}>
+                        <Star size={12} style={{ fill: 'currentColor' }} />
+                        {lot.rating > 0 ? lot.rating.toFixed(1) : 'New'}
+                    </span>
+                    <span style={{ fontWeight: 600, color: 'var(--accent-secondary)', fontSize: '0.9rem' }}>
+                        ₹{Number(lot.baseRate).toFixed(0)}/hr
+                    </span>
+                </div>
+
+                {/* Occupancy bar */}
+                <div className="progress-bar" style={{ height: '4px', marginBottom: '0.75rem' }}>
+                    <div
+                        className={`progress-fill ${occupancyPercent < 50 ? 'success' : occupancyPercent < 80 ? 'warning' : 'danger'}`}
+                        style={{ width: `${occupancyPercent}%` }}
+                    ></div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                        className="btn btn-primary btn-sm"
+                        style={{ flex: 1, fontSize: '0.8rem', padding: '0.5rem' }}
+                        onClick={(e) => handleBookNow(e, lot)}
+                        disabled={available === 0}
+                    >
+                        {available > 0 ? (user ? 'Book Now' : 'Login to Book') : 'Full'}
+                    </button>
+                    <button
+                        className="btn btn-secondary btn-sm btn-icon"
+                        style={{ padding: '0.5rem' }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/navigation?lat=${lot.latitude}&lon=${lot.longitude}&name=${encodeURIComponent(lot.name)}`);
+                        }}
+                        title="Navigate"
+                    >
+                        <Navigation size={14} />
+                    </button>
+                </div>
+            </div>
+        );
+    };
+
+    return (
+        <div style={{
+            position: 'relative',
+            width: 'calc(100% + 3rem)',
+            height: 'calc(100vh - 64px)',
+            overflow: 'hidden',
+            margin: '-1.5rem',
+        }}>
+            {/* Full-screen Map Background */}
+            <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
                 <ParkingMap
                     parkingLots={sortedLots}
                     userLocation={userLocation}
@@ -251,141 +297,221 @@ const FindParking = () => {
                 />
             </div>
 
-            {/* Parking List */}
-            <div className="glass-panel p-6">
-                <div className="section-header">
-                    <h3 className="section-title flex items-center gap-2">
-                        <MapPin size={20} className="text-accent-secondary" />
+            {/* Search Bar - overlayed on top of map */}
+            <div style={{
+                position: 'absolute',
+                top: '1rem',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 10,
+                width: '90%',
+                maxWidth: '600px',
+            }}>
+                <div className="glass-panel" style={{
+                    padding: '0.75rem',
+                    display: 'flex',
+                    gap: '0.5rem',
+                    alignItems: 'center',
+                    background: 'rgba(17, 24, 39, 0.92)',
+                    backdropFilter: 'blur(20px)',
+                }}>
+                    <div style={{ position: 'relative', flex: 1 }}>
+                        <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                        <input
+                            type="text"
+                            placeholder="Search parking..."
+                            className="input-field"
+                            style={{ paddingLeft: '2.25rem', fontSize: '0.9rem', padding: '0.6rem 0.75rem 0.6rem 2.25rem' }}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+                    <button
+                        className="btn btn-primary btn-sm"
+                        onClick={handleFindNearest}
+                        disabled={isLocating}
+                        style={{ whiteSpace: 'nowrap', fontSize: '0.8rem', padding: '0.6rem 0.75rem' }}
+                    >
+                        {isLocating ? <Loader2 size={16} className="animate-spin" /> : <Navigation size={16} />}
+                        <span className="hidden-mobile" style={{ marginLeft: '0.25rem' }}>Nearest</span>
+                    </button>
+                    <button
+                        className="btn btn-secondary btn-icon btn-sm"
+                        onClick={handleRefresh}
+                        title="Refresh"
+                        style={{ padding: '0.6rem' }}
+                    >
+                        <RefreshCw size={16} />
+                    </button>
+                </div>
+            </div>
+
+            {/* Desktop: Left Side Panel */}
+            <div className="parking-side-panel" style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                bottom: 0,
+                width: '380px',
+                zIndex: 5,
+                display: 'flex',
+                flexDirection: 'column',
+                background: 'rgba(10, 15, 26, 0.95)',
+                backdropFilter: 'blur(20px)',
+                borderRight: '1px solid var(--glass-border)',
+                overflowY: 'hidden',
+            }}>
+                {/* Panel Header */}
+                <div style={{
+                    padding: '1rem',
+                    borderBottom: '1px solid var(--glass-border)',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    flexShrink: 0,
+                    marginTop: 0,
+                }}>
+                    <h3 style={{ fontWeight: 600, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+                        <MapPin size={18} style={{ color: 'var(--accent-secondary)' }} />
                         {loading ? 'Loading...' : `${sortedLots.length} Parking Spots`}
                     </h3>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                        {lastUpdated.toLocaleTimeString()}
+                    </span>
                 </div>
 
-                {
-                    loading ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {/* Scrollable List */}
+                <div ref={listRef} style={{ flex: 1, overflowY: 'auto' }} className="custom-scrollbar">
+                    {loading ? (
+                        <div style={{ padding: '1rem' }}>
                             {[1, 2, 3, 4].map(i => (
-                                <div key={i} className="glass-card-static p-4">
+                                <div key={i} style={{ padding: '1rem', borderBottom: '1px solid var(--glass-border)' }}>
                                     <div className="skeleton skeleton-title"></div>
-                                    <div className="skeleton skeleton-text w-3/4"></div>
-                                    <div className="skeleton skeleton-text w-1/2"></div>
+                                    <div className="skeleton skeleton-text" style={{ width: '75%' }}></div>
+                                    <div className="skeleton skeleton-text" style={{ width: '50%' }}></div>
                                 </div>
                             ))}
                         </div>
+                    ) : currentLots.length === 0 ? (
+                        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                            <MapPin size={32} style={{ margin: '0 auto 0.75rem', opacity: 0.4 }} />
+                            <p>No parking spots found</p>
+                        </div>
                     ) : (
-                        <>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-4">
-                                {currentLots.map((lot, index) => {
-                                    const occupancyPercent = getOccupancyPercent(lot);
-                                    const status = getStatusBadge(occupancyPercent);
-                                    const available = lot.availableSlots ?? 0;
+                        currentLots.map((lot, index) => (
+                            <ParkingCard key={lot.id} lot={lot} index={index} />
+                        ))
+                    )}
+                </div>
 
-                                    return (
-                                        <div
-                                            key={lot.id}
-                                            className={`glass-card p-4 cursor-pointer transition-all duration-200 ${selectedLot?.id === lot.id ? 'ring-2 ring-accent-primary' : ''
-                                                }`}
-                                            onClick={() => setSelectedLot(lot)}
-                                            style={{ animationDelay: `${index * 0.03}s` }}
-                                        >
-                                            <div className="flex justify-between items-start mb-2">
-                                                <div className="flex-1 min-w-0">
-                                                    <h4 className="font-semibold text-sm truncate">{lot.name}</h4>
-                                                    <p className="text-xs text-muted flex items-center gap-2 mt-1">
-                                                        {lot.distance && (
-                                                            <span className="flex items-center gap-1">
-                                                                <Navigation size={10} />
-                                                                {lot.distance.toFixed(1)} km
-                                                            </span>
-                                                        )}
-                                                        {lot.eta && (
-                                                            <span className="flex items-center gap-1">
-                                                                <Clock size={10} />
-                                                                {lot.eta} min
-                                                            </span>
-                                                        )}
-                                                    </p>
-                                                </div>
-                                                <span className={`badge ${status.class} ml-2 text-xs`}>
-                                                    {status.text}
-                                                </span>
-                                            </div>
-
-                                            <div className="flex items-center justify-between text-sm mb-2">
-                                                <span className="flex items-center gap-1 text-secondary text-xs">
-                                                    <Car size={12} />
-                                                    {available}/{lot.totalCapacity}
-                                                </span>
-                                                <span className="flex items-center gap-1 text-yellow-400 text-xs">
-                                                    <Star size={12} className="fill-current" />
-                                                    {lot.rating > 0 ? lot.rating.toFixed(1) : 'New'}
-                                                    {lot.reviewCount > 0 && <span className="text-muted">({lot.reviewCount})</span>}
-                                                </span>
-                                                <span className="flex items-center gap-1 font-semibold text-accent text-sm">
-                                                    <IndianRupee size={12} />
-                                                    {Number(lot.baseRate).toFixed(2)}/hr
-                                                </span>
-                                            </div>
-
-                                            {/* Occupancy bar */}
-                                            <div className="progress-bar mb-3" style={{ height: '4px' }}>
-                                                <div
-                                                    className={`progress-fill ${occupancyPercent < 50 ? 'success' :
-                                                        occupancyPercent < 80 ? 'warning' : 'danger'
-                                                        }`}
-                                                    style={{ width: `${occupancyPercent}%` }}
-                                                ></div>
-                                            </div>
-
-                                            <div className="flex gap-2">
-                                                <button
-                                                    className="btn btn-primary btn-sm flex-1"
-                                                    onClick={(e) => handleBookNow(e, lot)}
-                                                    disabled={available === 0}
-                                                >
-                                                    {available > 0 ? (user ? 'Book Now' : 'Login to Book') : 'Full'}
-                                                </button>
-                                                <button
-                                                    className="btn btn-secondary btn-sm btn-icon"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        navigate(`/navigation?lat=${lot.latitude}&lon=${lot.longitude}&name=${encodeURIComponent(lot.name)}`);
-                                                    }}
-                                                    title="Navigate"
-                                                >
-                                                    <Navigation size={14} />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-
-                            {/* Pagination Controls */}
-                            {totalPages > 1 && (
-                                <div className="flex justify-center items-center gap-4 mt-2">
-                                    <button
-                                        className="btn btn-secondary btn-sm"
-                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                        disabled={currentPage === 1}
-                                    >
-                                        Previous
-                                    </button>
-                                    <span className="text-sm text-secondary">
-                                        Page {currentPage} of {totalPages}
-                                    </span>
-                                    <button
-                                        className="btn btn-secondary btn-sm"
-                                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                        disabled={currentPage === totalPages}
-                                    >
-                                        Next
-                                    </button>
-                                </div>
-                            )}
-                        </>
-                    )
-                }
+                {/* Pagination */}
+                {totalPages > 1 && (
+                    <div style={{
+                        padding: '0.75rem 1rem',
+                        borderTop: '1px solid var(--glass-border)',
+                        display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem',
+                        flexShrink: 0,
+                        background: 'rgba(10, 15, 26, 0.95)',
+                    }}>
+                        <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                            style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }}
+                        >
+                            Prev
+                        </button>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                            {currentPage} / {totalPages}
+                        </span>
+                        <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            disabled={currentPage === totalPages}
+                            style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }}
+                        >
+                            Next
+                        </button>
+                    </div>
+                )}
             </div>
+
+            {/* Mobile: Bottom Sheet Panel */}
+            <div className="parking-bottom-panel" style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                bottom: 0,
+                zIndex: 5,
+                display: 'none', /* shown via CSS @media */
+                flexDirection: 'column',
+                background: 'rgba(10, 15, 26, 0.95)',
+                backdropFilter: 'blur(20px)',
+                borderTop: '1px solid var(--glass-border)',
+                borderRadius: '1rem 1rem 0 0',
+                maxHeight: panelExpanded ? '60vh' : '3.5rem',
+                transition: 'max-height 0.3s ease',
+                overflow: 'hidden',
+            }}>
+                {/* Drag Handle / Toggle */}
+                <div
+                    onClick={() => setPanelExpanded(!panelExpanded)}
+                    style={{
+                        padding: '0.75rem 1rem',
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        cursor: 'pointer', flexShrink: 0,
+                    }}
+                >
+                    <h3 style={{ fontWeight: 600, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+                        <MapPin size={16} style={{ color: 'var(--accent-secondary)' }} />
+                        {loading ? 'Loading...' : `${sortedLots.length} Spots`}
+                    </h3>
+                    {panelExpanded ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+                </div>
+
+                {/* Mobile Scrollable List */}
+                {panelExpanded && (
+                    <div style={{ flex: 1, overflowY: 'auto' }} className="custom-scrollbar">
+                        {loading ? (
+                            <div style={{ padding: '1rem' }}>
+                                {[1, 2, 3].map(i => (
+                                    <div key={i} style={{ padding: '1rem', borderBottom: '1px solid var(--glass-border)' }}>
+                                        <div className="skeleton skeleton-title"></div>
+                                        <div className="skeleton skeleton-text" style={{ width: '60%' }}></div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            currentLots.map((lot, index) => (
+                                <ParkingCard key={lot.id} lot={lot} index={index} />
+                            ))
+                        )}
+
+                        {/* Mobile Pagination */}
+                        {totalPages > 1 && (
+                            <div style={{
+                                padding: '0.75rem', display: 'flex', justifyContent: 'center',
+                                alignItems: 'center', gap: '1rem',
+                            }}>
+                                <button className="btn btn-secondary btn-sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} style={{ fontSize: '0.8rem' }}>Prev</button>
+                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{currentPage}/{totalPages}</span>
+                                <button className="btn btn-secondary btn-sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} style={{ fontSize: '0.8rem' }}>Next</button>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* Responsive CSS - inline style tag */}
+            <style>{`
+                @media (max-width: 768px) {
+                    .parking-side-panel { display: none !important; }
+                    .parking-bottom-panel { display: flex !important; }
+                    .hidden-mobile { display: none !important; }
+                }
+                @media (min-width: 769px) {
+                    .parking-side-panel { display: flex !important; }
+                    .parking-bottom-panel { display: none !important; }
+                }
+            `}</style>
         </div>
     );
 };
