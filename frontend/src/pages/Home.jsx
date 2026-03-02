@@ -69,14 +69,14 @@ const Home = () => {
                 }}>
                     <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.5vw', textDecoration: 'none' }}>
                         <div style={{
-                            width: '3vw', height: '3vw', minWidth: '28px', minHeight: '28px',
-                            maxWidth: '44px', maxHeight: '44px',
-                            borderRadius: '0.5vw', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: '2.2vw', height: '2.2vw', minWidth: '24px', minHeight: '24px',
+                            maxWidth: '32px', maxHeight: '32px',
+                            borderRadius: '0.4vw', display: 'flex', alignItems: 'center', justifyContent: 'center',
                             background: 'var(--accent-gradient)',
                         }}>
-                            <Car style={{ width: '1.5vw', height: '1.5vw', minWidth: '14px', minHeight: '14px', maxWidth: '24px', maxHeight: '24px' }} className="text-white" />
+                            <Car style={{ width: '1.2vw', height: '1.2vw', minWidth: '12px', minHeight: '12px', maxWidth: '18px', maxHeight: '18px' }} className="text-white" />
                         </div>
-                        <span className="gradient-text" style={{ fontSize: 'max(1vw, 14px)', fontWeight: 700 }}>EDITH</span>
+                        <span className="gradient-text" style={{ fontSize: 'max(1.1vw, 16px)', fontWeight: 700 }}>EDITH</span>
                     </Link>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.8vw' }}>

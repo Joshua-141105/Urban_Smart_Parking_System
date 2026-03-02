@@ -9,7 +9,12 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "bookings")
+@Table(name = "bookings", indexes = {
+        @Index(name = "idx_booking_space_time", columnList = "parking_space_id, start_time, end_time"),
+        @Index(name = "idx_booking_space_status", columnList = "parking_space_id, status"),
+        @Index(name = "idx_booking_status_time", columnList = "status, start_time, end_time"),
+        @Index(name = "idx_booking_user_status", columnList = "user_id, status")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

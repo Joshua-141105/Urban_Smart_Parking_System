@@ -1,12 +1,34 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useWebSocket } from "../../context/WebSocketContext";
 import api from "../../api/axios";
 import {
     MapPin, Clock, Car, IndianRupee, CreditCard, Lock, Unlock,
-    AlertCircle, CheckCircle, ArrowLeft, Timer, Shield
+    AlertCircle, CheckCircle, ArrowLeft, Timer, Shield, Calendar, RefreshCw,
+    Zap, CalendarClock, Info
 } from "lucide-react";
+
+// Helper functions for time management
+const roundToNearest5Minutes = (date) => {
+    const ms = 1000 * 60 * 5; // 5 minutes in milliseconds
+    return new Date(Math.ceil(date.getTime() / ms) * ms);
+};
+
+const formatDateTimeLocal = (date) => {
+    const pad = (n) => n.toString().padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+const parseLocalDateTime = (str) => {
+    return new Date(str);
+};
+
+// Format date to ISO string without timezone (for backend LocalDateTime)
+const toLocalDateTimeString = (date) => {
+    const pad = (n) => n.toString().padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+};
 
 const BookingPayment = () => {
     const { lotId } = useParams();
@@ -18,18 +40,54 @@ const BookingPayment = () => {
     const [lot, setLot] = useState(location.state?.lot || null);
     const [selectedSpace, setSelectedSpace] = useState(null);
     const [spaces, setSpaces] = useState([]);
+    const [availableSpaceIds, setAvailableSpaceIds] = useState(new Set());
     const [loading, setLoading] = useState(true);
+    const [slotsLoading, setSlotsLoading] = useState(false);
     const [lockingSpace, setLockingSpace] = useState(false);
     const [isSpaceLocked, setIsSpaceLocked] = useState(false);
     const [lockTimeout, setLockTimeout] = useState(null);
     const [timeRemaining, setTimeRemaining] = useState(60); // 1 min lock timeout
-    const [duration, setDuration] = useState(1); // hours
+    
+    // Time-based booking state
+    const now = roundToNearest5Minutes(new Date());
+    const [startTime, setStartTime] = useState(formatDateTimeLocal(now));
+    const [endTime, setEndTime] = useState(formatDateTimeLocal(new Date(now.getTime() + 60 * 60 * 1000))); // +1 hour
+    const [timeError, setTimeError] = useState("");
+    
     const [vehicleNumber, setVehicleNumber] = useState("");
     const [processing, setProcessing] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState(false);
+    const [availabilityError, setAvailabilityError] = useState(false);
+    const [revalidating, setRevalidating] = useState(false);
 
-    const LOCK_DURATION = 60; // 1 minute in seconds
+    // Debounce ref for API calls
+    const debounceRef = useRef(null);
+    // AbortController ref for canceling pending API calls
+    const abortControllerRef = useRef(null);
+
+    // Calculate lock duration based on start time
+    const calculateLockDuration = (start) => {
+        const startDate = parseLocalDateTime(start);
+        const nowDate = new Date();
+        const fiveMinutesFromNow = new Date(nowDate.getTime() + 5 * 60 * 1000);
+        
+        // Real-time booking: within 5 minutes = 60s lock
+        // Advance booking: more than 5 minutes = 180s lock
+        if (startDate <= fiveMinutesFromNow) {
+            return 60;
+        }
+        return 180;
+    };
+
+    // Check if this is a real-time booking (starts within 5 minutes)
+    const isRealTimeBooking = () => {
+        const startDate = parseLocalDateTime(startTime);
+        const fiveMinutesFromNow = new Date(Date.now() + 5 * 60 * 1000);
+        return startDate <= fiveMinutesFromNow;
+    };
+
+    const LOCK_DURATION = calculateLockDuration(startTime);
 
     // Redirect if not logged in
     useEffect(() => {
@@ -38,6 +96,47 @@ const BookingPayment = () => {
         }
     }, [user, navigate, lotId]);
 
+    // Time validation
+    const validateTimeRange = useCallback(() => {
+        const start = parseLocalDateTime(startTime);
+        const end = parseLocalDateTime(endTime);
+        const nowDate = new Date();
+        const maxAdvance = new Date(nowDate.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days
+        
+        // Start time cannot be before now (allow 5 min buffer)
+        if (start < new Date(nowDate.getTime() - 5 * 60 * 1000)) {
+            return "Start time cannot be in the past";
+        }
+        
+        // Start time cannot be more than 7 days in future
+        if (start > maxAdvance) {
+            return "Cannot book more than 7 days in advance";
+        }
+        
+        // End time must be after start time
+        if (end <= start) {
+            return "End time must be after start time";
+        }
+        
+        // Minimum duration: 1 hour
+        const durationHours = (end - start) / (1000 * 60 * 60);
+        if (durationHours < 1) {
+            return "Minimum booking duration is 1 hour";
+        }
+        
+        // Maximum duration: 8 hours
+        if (durationHours > 8) {
+            return "Maximum booking duration is 8 hours";
+        }
+        
+        return "";
+    }, [startTime, endTime]);
+
+    useEffect(() => {
+        setTimeError(validateTimeRange());
+    }, [validateTimeRange]);
+
+    // Fetch lot details (initial)
     const fetchLotDetails = async () => {
         try {
             setLoading(true);
@@ -52,12 +151,85 @@ const BookingPayment = () => {
         }
     };
 
+    // Fetch available slots for time range
+    const fetchAvailableSlots = useCallback(async () => {
+        if (!lotId || timeError) return;
+        
+        // Cancel any pending request
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+        
+        const start = parseLocalDateTime(startTime);
+        const end = parseLocalDateTime(endTime);
+        
+        try {
+            setSlotsLoading(true);
+            setAvailabilityError(false);
+            const res = await api.get(`/parking/${lotId}/available`, {
+                params: {
+                    startTime: toLocalDateTimeString(start),
+                    endTime: toLocalDateTimeString(end)
+                },
+                signal: abortControllerRef.current.signal
+            });
+            
+            // Update available space IDs - ensure numbers for consistent lookup
+            const availableIds = new Set((res.data.spaceIds || []).map(id => Number(id)));
+            setAvailableSpaceIds(availableIds);
+            
+            // If selected space is no longer available, deselect it
+            if (selectedSpace && !availableIds.has(Number(selectedSpace.id))) {
+                setSelectedSpace(null);
+                setIsSpaceLocked(false);
+            }
+        } catch (err) {
+            // Ignore aborted requests
+            if (err.name === 'AbortError' || err.name === 'CanceledError') {
+                return;
+            }
+            console.error("Failed to fetch available slots", err);
+            setAvailabilityError(true);
+            // Clear available slots on error to prevent stale data
+            setAvailableSpaceIds(new Set());
+        } finally {
+            setSlotsLoading(false);
+        }
+    }, [lotId, startTime, endTime, timeError, spaces, selectedSpace]);
+
     // Initial fetch
     useEffect(() => {
         if (lotId) {
             fetchLotDetails();
         }
     }, [lotId]);
+
+    // Debounced fetch when time changes
+    useEffect(() => {
+        if (debounceRef.current) {
+            clearTimeout(debounceRef.current);
+        }
+        
+        if (startTime && endTime && !timeError) {
+            debounceRef.current = setTimeout(() => {
+                fetchAvailableSlots();
+            }, 300);
+        }
+        
+        return () => {
+            if (debounceRef.current) {
+                clearTimeout(debounceRef.current);
+            }
+        };
+    }, [startTime, endTime, timeError]);
+
+    // Initial slot fetch after lot loads
+    useEffect(() => {
+        if (lot && spaces.length > 0 && !timeError) {
+            fetchAvailableSlots();
+        }
+    }, [lot, spaces.length]);
 
     // Countdown timer for lock
     useEffect(() => {
@@ -66,7 +238,10 @@ const BookingPayment = () => {
             interval = setInterval(() => {
                 setTimeRemaining(prev => {
                     if (prev <= 1) {
+                        // Lock expired - notify user, unlock, and refresh
+                        setError("Lock expired! Please lock the space again.");
                         handleUnlockSpace();
+                        fetchAvailableSlots();
                         return 0;
                     }
                     return prev - 1;
@@ -76,8 +251,18 @@ const BookingPayment = () => {
         return () => clearInterval(interval);
     }, [isSpaceLocked, timeRemaining]);
 
+    // Quick duration buttons
+    const handleQuickDuration = (hours) => {
+        const start = parseLocalDateTime(startTime);
+        const newEnd = new Date(start.getTime() + hours * 60 * 60 * 1000);
+        setEndTime(formatDateTimeLocal(newEnd));
+    };
+
     const handleSelectSpace = (space) => {
-        if (space.isOccupied || isSpaceLocked || (lockUpdates && lockUpdates[space.id])) return;
+        const spaceId = Number(space.id);
+        const isLockedByOther = lockUpdates && lockUpdates[spaceId];
+        console.log('[Debug] handleSelectSpace:', { spaceId, isLockedByOther, isSpaceLocked, lockUpdates });
+        if (!availableSpaceIds.has(spaceId) || isSpaceLocked || isLockedByOther) return;
         setSelectedSpace(space);
         setError("");
     };
@@ -92,10 +277,11 @@ const BookingPayment = () => {
         setLockingSpace(true);
         setError("");
 
+        const lockDuration = calculateLockDuration(startTime);
         const lockPayload = {
             spaceId: selectedSpace.id,
             userId: user.id,
-            duration: LOCK_DURATION
+            duration: lockDuration
         };
         console.log("Lock Payload:", lockPayload);
 
@@ -105,7 +291,7 @@ const BookingPayment = () => {
 
             if (res.data.success) {
                 setIsSpaceLocked(true);
-                setTimeRemaining(LOCK_DURATION);
+                setTimeRemaining(lockDuration);
 
                 // Broadcast lock via WebSocket
                 if (isConnected && sendMessage) {
@@ -127,7 +313,7 @@ const BookingPayment = () => {
             if (spaces.length === 0) {
                 console.warn("API failed, falling back to demo mode");
                 setIsSpaceLocked(true);
-                setTimeRemaining(LOCK_DURATION);
+                setTimeRemaining(lockDuration);
             } else {
                 // For real data, show the actual error
                 const isOccupiedError = errorMessage.toLowerCase().includes("occupied") || errorMessage.toLowerCase().includes("locked");
@@ -136,7 +322,7 @@ const BookingPayment = () => {
                     setError(`This space was just taken. Refreshing map...`);
                     // Auto-refresh the map to show true status
                     setTimeout(() => {
-                        fetchLotDetails();
+                        fetchAvailableSlots();
                         setSelectedSpace(null);
                     }, 1500);
                 } else {
@@ -170,24 +356,104 @@ const BookingPayment = () => {
         }
 
         setIsSpaceLocked(false);
-        setTimeRemaining(LOCK_DURATION);
+        setTimeRemaining(calculateLockDuration(startTime));
         setSelectedSpace(null);
     };
 
-    const handlePayment = () => {
+    // Revalidate slot availability before proceeding to payment
+    const revalidateSlot = async () => {
+        if (!selectedSpace || !lotId) return false;
+        
+        const start = parseLocalDateTime(startTime);
+        const end = parseLocalDateTime(endTime);
+        
+        try {
+            const res = await api.get(`/parking/${lotId}/spaces/${selectedSpace.id}/available`, {
+                params: {
+                    startTime: toLocalDateTimeString(start),
+                    endTime: toLocalDateTimeString(end)
+                }
+            });
+            return res.data === true || res.data?.available === true;
+        } catch (err) {
+            console.error("Slot revalidation failed", err);
+            return false;
+        }
+    };
+
+    const handlePayment = async () => {
+        // Step 8: Payment Payload Validation
+        if (!selectedSpace) {
+            setError("Please select a parking space");
+            return;
+        }
+        
+        if (!isSpaceLocked) {
+            setError("Please lock the space before proceeding");
+            return;
+        }
+        
         if (!vehicleNumber.trim()) {
             setError("Please enter your vehicle number");
             return;
         }
+        
+        if (timeError) {
+            setError(timeError);
+            return;
+        }
 
+        const start = parseLocalDateTime(startTime);
+        const end = parseLocalDateTime(endTime);
+        const nowDate = new Date();
+        
+        // Validate start time not in past (5 min buffer)
+        if (start < new Date(nowDate.getTime() - 5 * 60 * 1000)) {
+            setError("Start time cannot be in the past");
+            return;
+        }
+        
+        // Validate end > start
+        if (end <= start) {
+            setError("End time must be after start time");
+            return;
+        }
+        
+        const durationHours = (end - start) / (1000 * 60 * 60);
+        
+        // Validate duration 1-8 hours
+        if (durationHours < 1 || durationHours > 8) {
+            setError("Duration must be between 1 and 8 hours");
+            return;
+        }
+        
+        // Step 5: Revalidate slot before payment
+        setRevalidating(true);
+        setError("");
+        
+        const isStillAvailable = await revalidateSlot();
+        
+        if (!isStillAvailable) {
+            setError("Slot no longer available. Please select another.");
+            setRevalidating(false);
+            setIsSpaceLocked(false);
+            setSelectedSpace(null);
+            fetchAvailableSlots();
+            return;
+        }
+        
+        setRevalidating(false);
+        
         const totalAmount = calculateTotal();
+        
         const bookingMetadata = {
             userId: user.id,
             spaceId: selectedSpace.id,
             lotId: lot.id,
             vehicleNumber: vehicleNumber.trim().toUpperCase(),
-            startTime: new Date().toISOString(),
-            durationHours: duration,
+            startTime: toLocalDateTimeString(start),
+            endTime: toLocalDateTimeString(end),
+            durationHours: durationHours, // Kept for backward compatibility
             totalAmount: totalAmount
         };
 
@@ -195,7 +461,7 @@ const BookingPayment = () => {
             state: {
                 amount: totalAmount,
                 type: "BOOKING",
-                description: `Parking at ${lot.name} for ${duration} hr(s)`,
+                description: `Parking at ${lot.name} for ${durationHours.toFixed(1)} hr(s)`,
                 metadata: bookingMetadata
             }
         });
@@ -203,8 +469,18 @@ const BookingPayment = () => {
 
     const calculateTotal = () => {
         if (!lot) return 0;
-        const basePrice = lot.baseRate * duration;
+        const start = parseLocalDateTime(startTime);
+        const end = parseLocalDateTime(endTime);
+        const durationHours = Math.max(0, (end - start) / (1000 * 60 * 60));
+        const basePrice = lot.baseRate * durationHours;
         return Number(basePrice.toFixed(2));
+    };
+
+    // Get current duration in hours for display
+    const getCurrentDuration = () => {
+        const start = parseLocalDateTime(startTime);
+        const end = parseLocalDateTime(endTime);
+        return Math.max(0, (end - start) / (1000 * 60 * 60));
     };
 
     const formatTime = (seconds) => {
@@ -235,7 +511,7 @@ const BookingPayment = () => {
                         Your parking spot has been reserved. Redirecting to your bookings...
                     </p>
                     <div className="text-sm text-muted">
-                        Space: {selectedSpace?.spaceNumber} | Duration: {duration}hr
+                        Space: {selectedSpace?.spaceNumber} | Duration: {getCurrentDuration()}hr
                     </div>
                 </div>
             </div>
@@ -276,25 +552,92 @@ const BookingPayment = () => {
                         </div>
                     )}
 
+                    {/* Step 3: API Failure Banner */}
+                    {availabilityError && (
+                        <div className="flex items-center justify-between p-3 mb-4 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm">
+                            <div className="flex items-center gap-2">
+                                <AlertCircle size={16} />
+                                Unable to check availability. Please retry.
+                            </div>
+                            <button 
+                                onClick={fetchAvailableSlots}
+                                className="flex items-center gap-1 px-3 py-1 rounded bg-rose-500/20 hover:bg-rose-500/30 transition-colors"
+                            >
+                                <RefreshCw size={14} />
+                                Retry
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Slots Loading Indicator */}
+                    {slotsLoading && (
+                        <div className="flex items-center justify-center gap-2 p-3 mb-4 rounded-lg bg-blue-500/10 text-blue-400 text-sm">
+                            <RefreshCw size={16} className="animate-spin" />
+                            Checking availability for selected time...
+                        </div>
+                    )}
+
+                    {/* Step 2: Availability Summary */}
+                    {!slotsLoading && !timeError && !availabilityError && availableSpaceIds.size > 0 && (
+                        <div className="flex items-center justify-center gap-2 p-3 mb-4 rounded-lg bg-emerald-500/10 text-emerald-400 text-sm">
+                            <CheckCircle size={16} />
+                            {availableSpaceIds.size} slot(s) available for selected time range
+                        </div>
+                    )}
+
+                    {/* Step 2: No Slots Available Message */}
+                    {!slotsLoading && !timeError && !availabilityError && spaces.length > 0 && availableSpaceIds.size === 0 && (
+                        <div className="flex items-center justify-center gap-2 p-3 mb-4 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm">
+                            <AlertCircle size={16} />
+                            No slots available for this time range. Try adjusting your time.
+                        </div>
+                    )}
+
+                    {/* Step 4: Slot Grid with Enhanced States */}
                     <div className="mb-6" style={{ 
                         display: 'flex', 
                         flexWrap: 'wrap',
                         justifyContent: 'center',
-                        gap: '0.4rem'
+                        gap: '0.4rem',
+                        opacity: (slotsLoading || availabilityError) ? 0.5 : 1,
+                        pointerEvents: (slotsLoading || availabilityError) ? 'none' : 'auto'
                     }}>
+                        {/* Step 4: Shimmer/skeleton when loading */}
+                        {slotsLoading && spaces.length === 0 && (
+                            Array.from({ length: 12 }, (_, i) => (
+                                <div
+                                    key={`skeleton-${i}`}
+                                    className="animate-pulse"
+                                    style={{
+                                        width: '90px',
+                                        height: '90px',
+                                        backgroundColor: '#e0e0e0',
+                                        borderRadius: '6px',
+                                    }}
+                                />
+                            ))
+                        )}
                         {spaces.length > 0 ? spaces.map((space) => {
-                            const isOccupied = space.isOccupied;
-                            const isLocked = lockUpdates && lockUpdates[space.id];
+                            // Use availableSpaceIds from backend instead of isOccupied flag
+                            const spaceId = Number(space.id);
+                            const isAvailable = availableSpaceIds.has(spaceId);
+                            const isLockedByOther = lockUpdates && lockUpdates[spaceId] && (!isSpaceLocked || selectedSpace?.id !== space.id);
+                            const isLockedByYou = isSpaceLocked && selectedSpace?.id === space.id;
                             const isSelected = selectedSpace?.id === space.id;
+                            const isUnavailable = !isAvailable || isLockedByOther;
                             
                             let bgColor = '#c8e6c9'; // Available - light green
                             let borderColor = '#a5d6a7';
                             let textColor = '#2e7d32';
                             
-                            if (isOccupied || isLocked) {
-                                bgColor = '#ffcdd2'; // Filled - light red/pink
-                                borderColor = '#ef9a9a';
-                                textColor = '#c62828';
+                            if (isUnavailable) {
+                                bgColor = '#e0e0e0'; // Unavailable - gray
+                                borderColor = '#bdbdbd';
+                                textColor = '#757575';
+                            } else if (isLockedByYou) {
+                                bgColor = '#fff3e0'; // Locked by you - orange highlight
+                                borderColor = '#ff9800';
+                                textColor = '#e65100';
                             } else if (isSelected) {
                                 bgColor = '#bbdefb'; // Selected - light blue
                                 borderColor = '#1976d2';
@@ -305,7 +648,7 @@ const BookingPayment = () => {
                                 <button
                                     key={space.id}
                                     onClick={() => handleSelectSpace(space)}
-                                    disabled={isOccupied || isSpaceLocked || isLocked}
+                                    disabled={isUnavailable || isSpaceLocked}
                                     style={{
                                         width: '90px',
                                         height: '90px',
@@ -315,7 +658,7 @@ const BookingPayment = () => {
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        cursor: isOccupied || isLocked ? 'not-allowed' : 'pointer',
+                                        cursor: isUnavailable ? 'not-allowed' : 'pointer',
                                         transition: 'all 0.2s ease',
                                         boxShadow: isSelected ? '0 0 0 3px #1976d2' : 'none',
                                         fontSize: '15px',
@@ -323,7 +666,7 @@ const BookingPayment = () => {
                                         color: textColor,
                                     }}
                                     onMouseEnter={(e) => {
-                                        if (!isOccupied && !isLocked) {
+                                        if (!isUnavailable) {
                                             e.currentTarget.style.transform = 'scale(1.05)';
                                             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
                                         }
@@ -395,15 +738,23 @@ const BookingPayment = () => {
                         )}
                     </div>
 
-                    {/* Legend */}
-                    <div className="flex flex-wrap gap-6 justify-center mt-6 text-sm font-medium" style={{ color: '#666' }}>
+                    {/* Step 4: Enhanced Legend */}
+                    <div className="flex flex-wrap gap-4 justify-center mt-6 text-sm font-medium" style={{ color: '#666' }}>
                         <div className="flex items-center gap-2">
-                            <div style={{ width: '20px', height: '20px', borderRadius: '4px', backgroundColor: '#c8e6c9', border: '2px solid #a5d6a7' }}></div>
+                            <div style={{ width: '18px', height: '18px', borderRadius: '4px', backgroundColor: '#c8e6c9', border: '2px solid #a5d6a7' }}></div>
                             Available
                         </div>
                         <div className="flex items-center gap-2">
-                            <div style={{ width: '20px', height: '20px', borderRadius: '4px', backgroundColor: '#ffcdd2', border: '2px solid #ef9a9a' }}></div>
-                            Filled
+                            <div style={{ width: '18px', height: '18px', borderRadius: '4px', backgroundColor: '#e0e0e0', border: '2px solid #bdbdbd' }}></div>
+                            Unavailable
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div style={{ width: '18px', height: '18px', borderRadius: '4px', backgroundColor: '#bbdefb', border: '2px solid #1976d2' }}></div>
+                            Selected
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div style={{ width: '18px', height: '18px', borderRadius: '4px', backgroundColor: '#fff3e0', border: '2px solid #ff9800' }}></div>
+                            Locked by You
                         </div>
                     </div>
                 </div>
@@ -432,7 +783,7 @@ const BookingPayment = () => {
                     )}
 
                     {selectedSpace && !isSpaceLocked && (
-                        (lockUpdates && lockUpdates[selectedSpace.id]) ? (
+                        (lockUpdates && lockUpdates[Number(selectedSpace.id)]) ? (
                             <div className="flex items-center justify-center p-3 mb-4 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 gap-2">
                                 <Lock size={16} />
                                 <span className="text-sm font-medium">Locked by another user</span>
@@ -451,7 +802,7 @@ const BookingPayment = () => {
                                 ) : (
                                     <>
                                         <Lock size={16} />
-                                        Lock Space for 1 Minute
+                                        Lock Space ({calculateLockDuration() === 60 ? '1 min' : '3 min'})
                                     </>
                                 )}
                             </button>
@@ -477,25 +828,100 @@ const BookingPayment = () => {
                             </span>
                         </div>
 
-                        {/* Duration */}
+                        {/* Step 9: Booking Type Badge */}
+                        {selectedSpace && (
+                            <div className={`flex items-center gap-2 p-3 mb-2 rounded-lg text-sm ${
+                                isRealTimeBooking() 
+                                    ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+                                    : 'bg-blue-500/10 border border-blue-500/20 text-blue-400'
+                            }`}>
+                                {isRealTimeBooking() ? (
+                                    <><Zap size={16} /> Real-time Booking — Lock: 1 min</>
+                                ) : (
+                                    <><CalendarClock size={16} /> Advance Booking — Lock: 3 min</>
+                                )}
+                                <div className="ml-auto group relative">
+                                    <Info size={14} className="cursor-help" />
+                                    <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                        {isRealTimeBooking() 
+                                            ? 'Starting within 5 minutes. Quick lock timer.' 
+                                            : 'Starting later. Extended lock timer for payment.'}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Start Time */}
                         <div>
-                            <label className="text-sm text-secondary block mb-2">Duration (hours)</label>
-                            <div className="flex gap-2">
+                            <label className="text-sm text-secondary block mb-2">Start Time</label>
+                            <input
+                                type="datetime-local"
+                                className="input w-full"
+                                value={startTime}
+                                onChange={(e) => {
+                                    // Step 1: Round to nearest 5 minutes and auto-adjust end time
+                                    const rawStart = parseLocalDateTime(e.target.value);
+                                    const roundedStart = roundToNearest5Minutes(rawStart);
+                                    const newStartStr = formatDateTimeLocal(roundedStart);
+                                    setStartTime(newStartStr);
+                                    
+                                    // Auto-adjust end time to maintain minimum 1 hour
+                                    const currentEnd = parseLocalDateTime(endTime);
+                                    const minEnd = new Date(roundedStart.getTime() + 60 * 60 * 1000);
+                                    
+                                    if (currentEnd <= roundedStart || currentEnd < minEnd) {
+                                        setEndTime(formatDateTimeLocal(minEnd));
+                                    }
+                                }}
+                                min={formatDateTimeLocal(new Date())}
+                                max={formatDateTimeLocal(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000))}
+                                step={300}
+                            />
+                            <p className="text-xs text-secondary mt-1">
+                                {isRealTimeBooking() ? 
+                                    '⚡ Real-time booking (starts now)' : 
+                                    '📅 Advance booking'}
+                            </p>
+                        </div>
+
+                        {/* End Time */}
+                        <div>
+                            <label className="text-sm text-secondary block mb-2">End Time</label>
+                            <input
+                                type="datetime-local"
+                                className="input w-full"
+                                value={endTime}
+                                onChange={(e) => setEndTime(e.target.value)}
+                                min={startTime}
+                            />
+                        </div>
+
+                        {/* Quick Duration Buttons */}
+                        <div>
+                            <label className="text-sm text-secondary block mb-2">Quick Duration</label>
+                            <div className="flex gap-2 flex-wrap">
                                 {[1, 2, 3, 4, 6, 8].map((h) => (
                                     <button
                                         key={h}
-                                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${duration === h
+                                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${getCurrentDuration() === h
                                             ? 'text-white shadow-md'
                                             : 'bg-white/5 hover:bg-white/10'
                                             }`}
-                                        style={duration === h ? { backgroundColor: '#2563eb' } : {}}
-                                        onClick={() => setDuration(h)}
+                                        style={getCurrentDuration() === h ? { backgroundColor: '#2563eb' } : {}}
+                                        onClick={() => handleQuickDuration(h)}
                                     >
                                         {h}h
                                     </button>
                                 ))}
                             </div>
                         </div>
+
+                        {/* Time Validation Error */}
+                        {timeError && (
+                            <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm">
+                                {timeError}
+                            </div>
+                        )}
 
                         {/* Vehicle Number */}
                         <div>
@@ -517,7 +943,7 @@ const BookingPayment = () => {
                             </div>
                             <div className="flex justify-between text-sm mb-2">
                                 <span className="text-secondary">Duration</span>
-                                <span>{duration} hour(s)</span>
+                                <span>{getCurrentDuration()} hour(s)</span>
                             </div>
                             <div className="flex justify-between text-lg font-bold mt-3 pt-3 border-t border-white/10">
                                 <span>Total</span>
@@ -532,12 +958,12 @@ const BookingPayment = () => {
                         <button
                             className="btn btn-primary w-full py-4 text-lg"
                             onClick={handlePayment}
-                            disabled={!selectedSpace || !isSpaceLocked || processing || !vehicleNumber.trim()}
+                            disabled={!selectedSpace || !isSpaceLocked || processing || revalidating || !vehicleNumber.trim() || timeError}
                         >
-                            {processing ? (
+                            {processing || revalidating ? (
                                 <>
                                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                    Processing...
+                                    {revalidating ? 'Verifying slot...' : 'Processing...'}
                                 </>
                             ) : (
                                 <>

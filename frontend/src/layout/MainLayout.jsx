@@ -16,7 +16,8 @@ import {
     Bell,
     User,
     LogIn,
-    Settings
+    Settings,
+    Car
 } from "lucide-react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -141,10 +142,15 @@ const MainLayout = () => {
                     flexShrink: 0,
                 }}>
                     <Link to="/" className="flex items-center gap-2" onClick={() => setSidebarOpen(false)} style={{ textDecoration: 'none' }}>
-                        <div className="w-8 h-8 rounded-lg flex-center" style={{ background: 'var(--accent-gradient)' }}>
-                            <MapPin size={16} className="text-white" />
+                        <div style={{
+                            width: '2.2vw', height: '2.2vw', minWidth: '24px', minHeight: '24px',
+                            maxWidth: '32px', maxHeight: '32px',
+                            borderRadius: '0.4vw', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: 'var(--accent-gradient)',
+                        }}>
+                            <Car style={{ width: '1.2vw', height: '1.2vw', minWidth: '12px', minHeight: '12px', maxWidth: '18px', maxHeight: '18px' }} className="text-white" />
                         </div>
-                        <span className="text-lg font-bold gradient-text">EDITH</span>
+                        <span className="gradient-text" style={{ fontSize: 'max(1.1vw, 16px)', fontWeight: 700 }}>EDITH</span>
                     </Link>
                     <button
                         onClick={toggleSidebar}
@@ -219,7 +225,16 @@ const MainLayout = () => {
             </aside>
 
             {/* Main Content - takes full width since sidebar is overlay */}
-            <div className="flex-1 flex flex-col min-w-0">
+            <div
+                className="flex-1 flex flex-col min-w-0"
+                style={{
+                    position: 'relative',
+                    zIndex: 10,
+                    filter: sidebarOpen ? 'blur(4px)' : 'none',
+                    transition: 'filter 0.3s ease',
+                    pointerEvents: sidebarOpen ? 'none' : 'auto'
+                }}
+            >
                 {/* Header */}
                 <header style={{
                     height: '64px',
@@ -230,6 +245,7 @@ const MainLayout = () => {
                     justifyContent: 'space-between',
                     background: 'var(--bg-secondary)',
                     flexShrink: 0,
+                    position: 'relative',
                 }}>
                     {/* Left: Hamburger menu button (visible when sidebar closed) */}
                     <button
@@ -241,15 +257,21 @@ const MainLayout = () => {
                     </button>
 
                     {/* Center: Logo & App Name */}
-                    <div className="flex items-center gap-2" style={{
+                    <div style={{
                         position: 'absolute',
                         left: '50%',
                         transform: 'translateX(-50%)',
+                        display: 'flex', alignItems: 'center', gap: '0.5vw',
                     }}>
-                        <div className="w-8 h-8 rounded-lg flex-center" style={{ background: 'var(--accent-gradient)' }}>
-                            <MapPin size={16} className="text-white" />
+                        <div style={{
+                            width: '2.2vw', height: '2.2vw', minWidth: '24px', minHeight: '24px',
+                            maxWidth: '32px', maxHeight: '32px',
+                            borderRadius: '0.4vw', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: 'var(--accent-gradient)',
+                        }}>
+                            <Car style={{ width: '1.2vw', height: '1.2vw', minWidth: '12px', minHeight: '12px', maxWidth: '18px', maxHeight: '18px' }} className="text-white" />
                         </div>
-                        <span className="text-lg font-bold gradient-text">EDITH</span>
+                        <span className="gradient-text" style={{ fontSize: 'max(1.1vw, 16px)', fontWeight: 700 }}>EDITH</span>
                     </div>
 
                     {/* Right side actions */}

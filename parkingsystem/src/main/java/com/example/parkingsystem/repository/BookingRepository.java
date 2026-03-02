@@ -20,6 +20,20 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     List<Booking> findOverlappingBookings(Long spaceId, LocalDateTime startTime, LocalDateTime endTime,
             BookingStatus status);
 
+    /**
+     * Find overlapping bookings considering multiple statuses (ACTIVE and PENDING).
+     * Used for advance booking overlap detection.
+     */
+    @org.springframework.data.jpa.repository.Query(
+        "SELECT b FROM Booking b WHERE b.parkingSpace.id = :spaceId " +
+        "AND b.status IN :statuses " +
+        "AND b.startTime < :endTime AND b.endTime > :startTime")
+    List<Booking> findOverlappingBookingsWithStatuses(
+            Long spaceId, 
+            LocalDateTime startTime, 
+            LocalDateTime endTime,
+            List<BookingStatus> statuses);
+
     java.util.Optional<Booking> findByVehicleNumberAndStatus(String vehicleNumber, BookingStatus status);
 
     List<Booking> findByStatus(BookingStatus status);

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
-import { ArrowLeft, Navigation, Clock, MapPin, Footprints, Car } from "lucide-react";
+import { ArrowLeft, Navigation, Clock, MapPin, Footprints, Car, Crosshair } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -33,14 +33,14 @@ const destIcon = L.divIcon({
 });
 
 // Map Controller to fit bounds
-const MapBounds = ({ userLoc, destLoc }) => {
+const MapBounds = ({ userLoc, destLoc, recenterTrigger }) => {
     const map = useMap();
     useEffect(() => {
         if (userLoc && destLoc) {
             const bounds = L.latLngBounds([userLoc, destLoc]);
-            map.fitBounds(bounds, { padding: [50, 50] });
+            map.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
         }
-    }, [userLoc, destLoc, map]);
+    }, [userLoc, destLoc, map, recenterTrigger]);
     return null;
 };
 
@@ -57,6 +57,11 @@ const NavigationPage = () => {
     const [steps, setSteps] = useState([]);
     const [loading, setLoading] = useState(true);
     const [mode, setMode] = useState("driving"); // driving, walking
+    const [recenterTrigger, setRecenterTrigger] = useState(0);
+
+    const handleRecenter = () => {
+        setRecenterTrigger(prev => prev + 1);
+    };
 
     // Get User Location
     useEffect(() => {
@@ -118,26 +123,27 @@ const NavigationPage = () => {
     return (
         <div className="page-container">
             {/* Map */}
-            <div className="glass-panel overflow-hidden rounded-xl mb-6" style={{ height: '45vh', minHeight: '300px' }}>
+            <div className="glass-panel overflow-hidden rounded-xl mb-6 relative" style={{ height: '45vh', minHeight: '300px' }}>
                 {userLoc && destLat ? (
-                    <MapContainer
-                        center={userLoc}
-                        zoom={13}
-                        style={{ height: "100%", width: "100%" }}
-                        className="z-0"
-                    >
-                        <TileLayer
-                            attribution='&copy; OSRM'
-                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                        />
+                    <>
+                        <MapContainer
+                            center={userLoc}
+                            zoom={13}
+                            style={{ height: "100%", width: "100%" }}
+                            className="z-0"
+                        >
+                            <TileLayer
+                                attribution='&copy; OSRM'
+                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                            />
 
-                        <Marker position={userLoc} icon={userIcon}>
-                            <Popup>You</Popup>
-                        </Marker>
+                            <Marker position={userLoc} icon={userIcon}>
+                                <Popup>You</Popup>
+                            </Marker>
 
-                        <Marker position={[destLat, destLon]} icon={destIcon}>
-                            <Popup>{destName}</Popup>
-                        </Marker>
+                            <Marker position={[destLat, destLon]} icon={destIcon}>
+                                <Popup>{destName}</Popup>
+                            </Marker>
 
                         {routeData && (
                             <Polyline
@@ -148,8 +154,34 @@ const NavigationPage = () => {
                             />
                         )}
 
-                        <MapBounds userLoc={userLoc} destLoc={[destLat, destLon]} />
-                    </MapContainer>
+                            <MapBounds userLoc={userLoc} destLoc={[destLat, destLon]} recenterTrigger={recenterTrigger} />
+                        </MapContainer>
+                        
+                        {/* Relocate Button */}
+                        <button
+                            onClick={handleRecenter}
+                            style={{
+                                position: 'absolute',
+                                bottom: '16px',
+                                right: '16px',
+                                zIndex: 1000,
+                                width: '44px',
+                                height: '44px',
+                                borderRadius: '50%',
+                                backgroundColor: '#3b82f6',
+                                border: '2px solid white',
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                color: 'white'
+                            }}
+                            title="Recenter map"
+                        >
+                            <Crosshair size={20} />
+                        </button>
+                    </>
                 ) : (
                     <div className="flex-center h-full">
                         <div className="animate-spin w-8 h-8 border-2 border-accent-primary border-t-transparent rounded-full"></div>
@@ -158,13 +190,13 @@ const NavigationPage = () => {
             </div>
 
             {/* Sidebar / Instructions - Bottom */}
-            <div className="w-full glass-panel flex flex-col">
-                <div className="p-4 border-b border-white/10 shrink-0">
+            <div className="w-full glass-panel" style={{ maxHeight: '75vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <div className="p-4 border-b border-white/10" style={{ flexShrink: 0 }}>
                     <button
                         onClick={() => navigate(-1)}
-                        className="flex items-center gap-2 text-secondary hover:text-white mb-4 transition-colors"
+                        className="btn btn-ghost btn-sm flex items-center gap-2 mb-4"
                     >
-                        <ArrowLeft size={18} /> Back
+                        <ArrowLeft size={16} /> Back
                     </button>
 
                     <h2 className="text-xl font-bold mb-1 truncate">{destName}</h2>
@@ -199,7 +231,7 @@ const NavigationPage = () => {
                     </div>
                 </div>
 
-                <div className="overflow-y-auto p-4 space-y-4 custom-scrollbar" style={{ maxHeight: '400px' }}>
+                <div className="p-4 space-y-4 custom-scrollbar" style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
                     {loading ? (
                         <div className="flex-center py-10">
                             <div className="animate-spin w-6 h-6 border-2 border-accent border-t-transparent rounded-full"></div>

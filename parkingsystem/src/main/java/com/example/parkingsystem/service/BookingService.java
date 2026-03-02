@@ -28,20 +28,17 @@ public class BookingService {
                 ParkingSpace space = parkingSpaceRepository.findByIdWithLock(request.getParkingSpaceId())
                                 .orElseThrow(() -> new RuntimeException("Parking Space not found"));
 
-                // 2. Check overlap (Double check logic, though lock prevents concurrent writes,
-                // logical overlap exists)
-                // Optimization: In real world, we query bookings table for overlap.
-                // For simplicity: Check if space isOccupied flag matching current time?
-                // Better: Check Booking table for overlaps.
-                boolean isOverlapping = bookingRepository
-                                .findByParkingSpaceIdAndEndTimeAfterAndStatus(space.getId(), request.getStartTime(),
-                                                BookingStatus.ACTIVE)
-                                .stream()
-                                .anyMatch(b -> b.getStartTime().isBefore(request.getEndTime())
-                                                && b.getEndTime().isAfter(request.getStartTime()));
+                // 2. Check overlap for BOTH ACTIVE and PENDING bookings
+                // This ensures users in payment stage (PENDING) block concurrent booking attempts
+                List<BookingStatus> blockingStatuses = List.of(BookingStatus.ACTIVE, BookingStatus.PENDING);
+                List<Booking> overlappingBookings = bookingRepository.findOverlappingBookingsWithStatuses(
+                                space.getId(),
+                                request.getStartTime(),
+                                request.getEndTime(),
+                                blockingStatuses);
 
-                if (isOverlapping) {
-                        throw new RuntimeException("Slot already booked for the selected time range");
+                if (!overlappingBookings.isEmpty()) {
+                        throw new RuntimeException("Slot already booked or reserved for the selected time range");
                 }
 
                 User user = userRepository.findById(userId)
@@ -106,7 +103,52 @@ public class BookingService {
          */
         private static final java.util.concurrent.ConcurrentHashMap<Long, LockInfo> spaceLocks = new java.util.concurrent.ConcurrentHashMap<>();
 
+        // Lock duration constants
+        private static final int REALTIME_LOCK_DURATION_SECONDS = 60;   // 1 minute for real-time bookings
+        private static final int ADVANCE_LOCK_DURATION_SECONDS = 180;   // 3 minutes for advance bookings
+        private static final int REALTIME_THRESHOLD_MINUTES = 5;        // Within 5 minutes = real-time
+
+        /**
+         * Lock a space with fixed duration (backward compatible).
+         */
         public boolean lockSpace(Long spaceId, Long userId, Integer durationSeconds) {
+                return lockSpaceInternal(spaceId, userId, durationSeconds);
+        }
+
+        /**
+         * Lock a space with dynamic duration based on booking start time.
+         * - Real-time booking (startTime within 5 minutes): 60 second lock
+         * - Advance booking (startTime > 5 minutes away): 3 minute lock
+         */
+        public boolean lockSpaceForBooking(Long spaceId, Long userId, LocalDateTime startTime) {
+                int lockDuration = calculateLockDuration(startTime);
+                return lockSpaceInternal(spaceId, userId, lockDuration);
+        }
+
+        /**
+         * Calculate lock duration based on how far in the future the booking starts.
+         */
+        private int calculateLockDuration(LocalDateTime startTime) {
+                if (startTime == null) {
+                        return REALTIME_LOCK_DURATION_SECONDS;
+                }
+
+                LocalDateTime now = LocalDateTime.now();
+                LocalDateTime realtimeThreshold = now.plusMinutes(REALTIME_THRESHOLD_MINUTES);
+
+                if (startTime.isBefore(realtimeThreshold)) {
+                        // Real-time booking: shorter lock
+                        return REALTIME_LOCK_DURATION_SECONDS;
+                } else {
+                        // Advance booking: longer lock for payment processing
+                        return ADVANCE_LOCK_DURATION_SECONDS;
+                }
+        }
+
+        /**
+         * Internal lock implementation.
+         */
+        private boolean lockSpaceInternal(Long spaceId, Long userId, Integer durationSeconds) {
                 ParkingSpace space = parkingSpaceRepository.findById(spaceId)
                                 .orElseThrow(() -> new RuntimeException("Space not found"));
 
@@ -178,16 +220,16 @@ public class BookingService {
                 ParkingSpace space = parkingSpaceRepository.findByIdWithLock(spaceId)
                                 .orElseThrow(() -> new RuntimeException("Parking Space not found"));
 
-                // Validate overlaps
-                boolean isOverlapping = bookingRepository
-                                .findByParkingSpaceIdAndEndTimeAfterAndStatus(space.getId(), startTime,
-                                                BookingStatus.ACTIVE)
-                                .stream()
-                                .anyMatch(b -> b.getStartTime().isBefore(endTime)
-                                                && b.getEndTime().isAfter(startTime));
+                // Validate overlaps for BOTH ACTIVE and PENDING bookings
+                List<BookingStatus> blockingStatuses = List.of(BookingStatus.ACTIVE, BookingStatus.PENDING);
+                List<Booking> overlappingBookings = bookingRepository.findOverlappingBookingsWithStatuses(
+                                space.getId(),
+                                startTime,
+                                endTime,
+                                blockingStatuses);
 
-                if (isOverlapping) {
-                        throw new RuntimeException("Slot already booked for the selected time range");
+                if (!overlappingBookings.isEmpty()) {
+                        throw new RuntimeException("Slot already booked or reserved for the selected time range");
                 }
 
                 User user = userRepository.findById(userId)

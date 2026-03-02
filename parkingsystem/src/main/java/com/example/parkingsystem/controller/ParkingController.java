@@ -7,13 +7,16 @@ import com.example.parkingsystem.repository.ParkingLotRepository;
 import com.example.parkingsystem.repository.ParkingSpaceRepository;
 import com.example.parkingsystem.repository.ReviewRepository;
 import com.example.parkingsystem.entity.Review;
+import com.example.parkingsystem.service.AvailabilityService;
 import com.example.parkingsystem.service.ParkingService;
 import com.example.parkingsystem.service.RouteEngineService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -27,6 +30,7 @@ public class ParkingController {
     private final ParkingSpaceRepository parkingSpaceRepository;
     private final ReviewRepository reviewRepository;
     private final RouteEngineService routeEngineService;
+    private final AvailabilityService availabilityService;
 
     /**
      * Get nearest parking lots based on user location.
@@ -151,6 +155,93 @@ public class ParkingController {
         response.put("spaces", spacesList);
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get available parking spaces for a specific time range.
+     * Supports both real-time (immediate) and advance booking scenarios.
+     * 
+     * @param id        Parking lot ID
+     * @param startTime Start time in ISO format (optional, defaults to now)
+     * @param endTime   End time in ISO format (required if startTime provided)
+     * @param duration  Duration in hours (alternative to endTime, defaults to 1)
+     * @return Availability summary with available space IDs and count
+     */
+    @GetMapping("/{id}/available")
+    public ResponseEntity<?> getAvailableSpaces(
+            @PathVariable Long id,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime,
+            @RequestParam(required = false, defaultValue = "1") Integer duration) {
+
+        try {
+            // Validate lot exists
+            if (!parkingLotRepository.existsById(id)) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // Default startTime to now if not provided
+            LocalDateTime effectiveStartTime = startTime != null ? startTime : LocalDateTime.now();
+
+            // Calculate endTime from duration if not explicitly provided
+            LocalDateTime effectiveEndTime;
+            if (endTime != null) {
+                effectiveEndTime = endTime;
+            } else {
+                effectiveEndTime = effectiveStartTime.plusHours(duration);
+            }
+
+            // Get availability summary from service
+            Map<String, Object> availability = availabilityService.getAvailabilitySummary(
+                    id, effectiveStartTime, effectiveEndTime);
+
+            return ResponseEntity.ok(availability);
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", true,
+                    "message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "error", true,
+                    "message", "Failed to check availability: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Check if a specific space is available for a time range.
+     * 
+     * @param id        Parking lot ID
+     * @param spaceId   Parking space ID
+     * @param startTime Start time in ISO format
+     * @param endTime   End time in ISO format
+     * @return Availability status for the specific space
+     */
+    @GetMapping("/{id}/spaces/{spaceId}/available")
+    public ResponseEntity<?> checkSpaceAvailability(
+            @PathVariable Long id,
+            @PathVariable Long spaceId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime,
+            @RequestParam(required = false, defaultValue = "1") Integer duration) {
+
+        try {
+            LocalDateTime effectiveEndTime = endTime != null ? endTime : startTime.plusHours(duration);
+
+            boolean isAvailable = availabilityService.isSpaceAvailable(spaceId, startTime, effectiveEndTime);
+
+            return ResponseEntity.ok(Map.of(
+                    "spaceId", spaceId,
+                    "lotId", id,
+                    "startTime", startTime.toString(),
+                    "endTime", effectiveEndTime.toString(),
+                    "available", isAvailable));
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", true,
+                    "message", e.getMessage()));
+        }
     }
 
     /**

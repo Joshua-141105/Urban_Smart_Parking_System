@@ -75,7 +75,7 @@ const userLocationIcon = L.divIcon({
 });
 
 // Component to handle map center updates
-const MapController = ({ center, zoom }) => {
+const MapController = ({ center, zoom, initialFocus }) => {
     const map = useMap();
 
     useEffect(() => {
@@ -83,6 +83,13 @@ const MapController = ({ center, zoom }) => {
             map.flyTo(center, zoom || 14, { duration: 1 });
         }
     }, [center, zoom, map]);
+
+    // Handle initial focus when data loads (only once)
+    useEffect(() => {
+        if (initialFocus) {
+            map.setView(initialFocus, 13);
+        }
+    }, [initialFocus, map]);
 
     return null;
 };
@@ -96,7 +103,10 @@ const ParkingMap = ({
     routeCoordinates = null,
     showControls = true
 }) => {
-    const center = userLocation || [12.9716, 77.5946]; // Default to Bangalore
+    // Center priority: userLocation > first parking lot > fallback to Bangalore
+    const center = userLocation 
+        || (parkingLots.length > 0 ? [parkingLots[0].latitude, parkingLots[0].longitude] : null)
+        || [12.9716, 77.5946];
 
     // Calculate occupancy percentage for each lot
     const getOccupancyPercent = useCallback((lot) => {
@@ -123,6 +133,14 @@ const ParkingMap = ({
         }
     }, [selectedLot]);
 
+    // Calculate initial focus for when lots load
+    const initialFocusRef = useMemo(() => {
+        if (!userLocation && parkingLots.length > 0) {
+            return [parkingLots[0].latitude, parkingLots[0].longitude];
+        }
+        return null;
+    }, [userLocation, parkingLots.length > 0 ? parkingLots[0]?.id : null]);
+
     return (
         <div className="map-container relative" style={{ height: '100%', width: '100%' }}>
             <MapContainer
@@ -131,7 +149,11 @@ const ParkingMap = ({
                 style={{ height: "100%", width: "100%" }}
                 className="z-0"
             >
-                <MapController center={selectedLot ? [selectedLot.latitude, selectedLot.longitude] : null} zoom={15} />
+                <MapController 
+                    center={selectedLot ? [selectedLot.latitude, selectedLot.longitude] : null} 
+                    zoom={15}
+                    initialFocus={initialFocusRef}
+                />
 
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'

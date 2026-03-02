@@ -107,9 +107,12 @@ export const WebSocketProvider = ({ children }) => {
                 client.subscribe('/topic/parking/locks', (message) => {
                     try {
                         const data = JSON.parse(message.body);
+                        // Ensure spaceId is stored as number for consistent key lookup
+                        const spaceId = Number(data.spaceId);
+                        console.log('[WS] Lock update received:', { spaceId, isLocked: data.isLocked });
                         setLockUpdates(prev => ({
                             ...prev,
-                            [data.spaceId]: data.isLocked
+                            [spaceId]: data.isLocked
                         }));
                     } catch (e) {
                         console.error('Error parsing lock update:', e);
