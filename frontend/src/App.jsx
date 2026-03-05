@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import Home from "./pages/Home";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
+import ForgotPassword from "./pages/auth/ForgotPassword";
 import Dashboard from "./pages/driver/Dashboard";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AuthLayout from "./layout/AuthLayout";
@@ -32,7 +33,7 @@ function App() {
           <div className="w-16 h-16 mx-auto mb-4 rounded-full animate-spin"
             style={{ border: '3px solid var(--glass-border)', borderTopColor: 'var(--accent-primary)' }}>
           </div>
-          <p className="text-accent text-lg font-medium">Loading EDITH...</p>
+          <p className="text-accent text-lg font-medium">Loading ParkVerse...</p>
         </div>
       </div>
     );
@@ -47,6 +48,7 @@ function App() {
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
       </Route>
 
       {/* Public Routes with MainLayout */}

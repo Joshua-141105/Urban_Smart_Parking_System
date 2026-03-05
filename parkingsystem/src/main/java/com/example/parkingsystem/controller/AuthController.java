@@ -3,6 +3,7 @@ package com.example.parkingsystem.controller;
 import com.example.parkingsystem.dto.JwtResponse;
 import com.example.parkingsystem.dto.LoginRequest;
 import com.example.parkingsystem.dto.MessageResponse;
+import com.example.parkingsystem.dto.ResetPasswordRequest;
 import com.example.parkingsystem.dto.SignupRequest;
 import com.example.parkingsystem.entity.Role;
 import com.example.parkingsystem.entity.User;
@@ -80,5 +81,48 @@ public class AuthController {
                 userRepository.save(user);
 
                 return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
+        }
+
+        @PostMapping("/verify-user")
+        public ResponseEntity<?> verifyUser(@RequestBody java.util.Map<String, String> request) {
+                String input = request.get("usernameOrEmail");
+                if (input == null || input.isBlank()) {
+                        return ResponseEntity
+                                        .badRequest()
+                                        .body(new MessageResponse("Error: Username or email is required."));
+                }
+
+                boolean exists = userRepository.findByUsername(input).isPresent()
+                                || userRepository.findByEmail(input).isPresent();
+
+                if (!exists) {
+                        return ResponseEntity
+                                        .badRequest()
+                                        .body(new MessageResponse(
+                                                        "Error: No account found with that username or email."));
+                }
+
+                return ResponseEntity.ok(new MessageResponse("User verified successfully."));
+        }
+
+        @PostMapping("/reset-password")
+        public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+                String input = request.getUsernameOrEmail();
+
+                // Try finding user by username first, then by email
+                User user = userRepository.findByUsername(input)
+                                .orElse(userRepository.findByEmail(input).orElse(null));
+
+                if (user == null) {
+                        return ResponseEntity
+                                        .badRequest()
+                                        .body(new MessageResponse(
+                                                        "Error: No account found with that username or email."));
+                }
+
+                user.setPassword(encoder.encode(request.getNewPassword()));
+                userRepository.save(user);
+
+                return ResponseEntity.ok(new MessageResponse("Password has been reset successfully!"));
         }
 }

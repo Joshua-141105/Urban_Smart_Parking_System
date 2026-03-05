@@ -22,6 +22,8 @@ import {
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
+import AnimatedBackground from "../components/AnimatedBackground";
+
 const MainLayout = () => {
     const { user, logout } = useAuth();
     const { unreadCount } = useNotifications();
@@ -99,6 +101,9 @@ const MainLayout = () => {
     return (
         <div className="flex" style={{ height: '100vh', overflow: 'hidden', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
 
+            {/* Animated Background */}
+            <AnimatedBackground />
+
             {/* Backdrop overlay with blur transition when sidebar is open */}
             <div
                 className="fixed inset-0 z-20"
@@ -150,7 +155,7 @@ const MainLayout = () => {
                         }}>
                             <Car style={{ width: '1.2vw', height: '1.2vw', minWidth: '12px', minHeight: '12px', maxWidth: '18px', maxHeight: '18px' }} className="text-white" />
                         </div>
-                        <span className="gradient-text" style={{ fontSize: 'max(1.1vw, 16px)', fontWeight: 700 }}>EDITH</span>
+                        <span className="gradient-text" style={{ fontSize: 'max(1.1vw, 16px)', fontWeight: 700 }}>ParkVerse</span>
                     </Link>
                     <button
                         onClick={toggleSidebar}
@@ -174,7 +179,8 @@ const MainLayout = () => {
                                     style={{
                                         textDecoration: 'none',
                                         color: isActive(item.path) ? '#fff' : 'var(--text-secondary)',
-                                        background: isActive(item.path) ? 'var(--accent-primary)' : 'transparent'
+                                        background: isActive(item.path) ? 'var(--accent-primary)' : 'transparent',
+                                        borderRadius: 'var(--radius-md)',
                                     }}
                                 >
                                     {item.icon}
@@ -271,7 +277,7 @@ const MainLayout = () => {
                         }}>
                             <Car style={{ width: '1.2vw', height: '1.2vw', minWidth: '12px', minHeight: '12px', maxWidth: '18px', maxHeight: '18px' }} className="text-white" />
                         </div>
-                        <span className="gradient-text" style={{ fontSize: 'max(1.1vw, 16px)', fontWeight: 700 }}>EDITH</span>
+                        <span className="gradient-text" style={{ fontSize: 'max(1.1vw, 16px)', fontWeight: 700 }}>ParkVerse</span>
                     </div>
 
                     {/* Right side actions */}

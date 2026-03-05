@@ -38,7 +38,7 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem("token", token);
             localStorage.setItem("user", JSON.stringify(userData));
             // Clear the session flag so notification toasts show on fresh login
-            sessionStorage.removeItem('edith_login_toast_shown');
+            sessionStorage.removeItem('parkverse_login_toast_shown');
             setUser(userData);
 
             return { success: true };
@@ -73,7 +73,7 @@ export const AuthProvider = ({ children }) => {
     const logout = () => {
         localStorage.removeItem("token");
         localStorage.removeItem("user");
-        sessionStorage.removeItem('edith_login_toast_shown');
+        sessionStorage.removeItem('parkverse_login_toast_shown');
         setUser(null);
     };
 

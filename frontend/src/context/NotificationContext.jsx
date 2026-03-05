@@ -30,7 +30,7 @@ export const NotificationProvider = ({ children }) => {
     useEffect(() => {
         if (user && user.id) {
             const isNewLogin = previousUserId.current === null || previousUserId.current !== user.id;
-            const loginFlag = sessionStorage.getItem('edith_login_toast_shown');
+            const loginFlag = sessionStorage.getItem('parkverse_login_toast_shown');
 
             if (isNewLogin && !loginFlag) {
                 // This is a fresh login - show toasts for unread notifications
@@ -44,7 +44,7 @@ export const NotificationProvider = ({ children }) => {
     // Show toasts only once on fresh login
     useEffect(() => {
         if (user && notifications.length > 0 && !hasShownLoginToasts.current) {
-            const loginFlag = sessionStorage.getItem('edith_login_toast_shown');
+            const loginFlag = sessionStorage.getItem('parkverse_login_toast_shown');
             if (loginFlag) {
                 // Already shown toasts in this session (page was refreshed)
                 hasShownLoginToasts.current = true;
@@ -64,7 +64,7 @@ export const NotificationProvider = ({ children }) => {
 
             hasShownLoginToasts.current = true;
             // Mark in sessionStorage so page refresh won't re-trigger
-            sessionStorage.setItem('edith_login_toast_shown', 'true');
+            sessionStorage.setItem('parkverse_login_toast_shown', 'true');
         }
     }, [user, notifications]);
 

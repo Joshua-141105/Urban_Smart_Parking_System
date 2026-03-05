@@ -33,7 +33,7 @@ const Dashboard = () => {
     useEffect(() => {
         if (user?.roles?.some(role => role.includes("CITY_ADMIN") || role.includes("SYSTEM_ADMIN"))) {
             navigate("/admin/dashboard");
-        }   
+        }
     }, [user, navigate]);
 
     useEffect(() => {
@@ -84,6 +84,8 @@ const Dashboard = () => {
                     .map(b => ({
                         id: b.id,
                         parkingLotName: b.parkingSpace.parkingLot.name,
+                        latitude: b.parkingSpace.parkingLot.latitude,
+                        longitude: b.parkingSpace.parkingLot.longitude,
                         vehicleNumber: b.vehicleNumber || "N/A",
                         date: new Date(b.startTime).toLocaleDateString(),
                         time: new Date(b.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -153,7 +155,7 @@ const Dashboard = () => {
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="stats-flex-container">
                 <div className="stat-card">
                     <div className="flex items-start justify-between">
                         <div>
@@ -280,7 +282,10 @@ const Dashboard = () => {
                                 <div className="text-right shrink-0">
                                     <p className="text-lg font-bold">₹{booking.amount}</p>
                                     {booking.status === 'ACTIVE' && (
-                                        <button className="btn btn-secondary btn-sm mt-1">
+                                        <button
+                                            className="btn btn-primary btn-sm mt-1"
+                                            onClick={() => navigate(`/navigation?lat=${booking.latitude}&lon=${booking.longitude}&name=${encodeURIComponent(booking.parkingLotName)}`)}
+                                        >
                                             <Navigation size={14} />
                                             Navigate
                                         </button>

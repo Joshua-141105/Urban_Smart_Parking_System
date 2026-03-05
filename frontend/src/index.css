@@ -488,6 +488,35 @@ a:hover {
   gap: 2rem;
 }
 
+/* Vertical spacing between children */
+.space-y-1>*+* {
+  margin-top: 0.25rem;
+}
+
+.space-y-2>*+* {
+  margin-top: 0.5rem;
+}
+
+.space-y-3>*+* {
+  margin-top: 0.75rem;
+}
+
+.space-y-4>*+* {
+  margin-top: 1rem;
+}
+
+.space-y-5>*+* {
+  margin-top: 1.25rem;
+}
+
+.space-y-6>*+* {
+  margin-top: 1.5rem;
+}
+
+.space-y-8>*+* {
+  margin-top: 2rem;
+}
+
 .grid {
   display: grid;
 }
@@ -608,6 +637,14 @@ a:hover {
 
 .mt-4 {
   margin-top: 1rem;
+}
+
+.mt-6 {
+  margin-top: 1.5rem;
+}
+
+.mt-8 {
+  margin-top: 2rem;
 }
 
 .mt-auto {
@@ -773,6 +810,15 @@ a:hover {
   margin-bottom: 1.5rem;
 }
 
+/* Stats flex container */
+.stats-flex-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
 /* Stat cards */
 .stat-card {
   padding: 1.5rem;
@@ -781,6 +827,12 @@ a:hover {
   border-radius: var(--radius-lg);
   position: relative;
   overflow: hidden;
+}
+
+/* Fixed-width stat cards inside flex container (Dashboard) */
+.stats-flex-container .stat-card {
+  width: 270px;
+  flex-shrink: 0;
 }
 
 .stat-card::before {
@@ -946,6 +998,163 @@ a:hover {
 
   50% {
     transform: translateY(-10px);
+  }
+}
+
+/* ========================================
+   ANIMATED BACKGROUND
+======================================== */
+
+.animated-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.animated-bg__orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.12;
+  will-change: transform;
+}
+
+.animated-bg__orb--1 {
+  width: 400px;
+  height: 400px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  top: -5%;
+  left: -5%;
+  animation: orbDrift1 20s ease-in-out infinite;
+}
+
+.animated-bg__orb--2 {
+  width: 350px;
+  height: 350px;
+  background: linear-gradient(135deg, #06b6d4, #3b82f6);
+  top: 60%;
+  right: -8%;
+  animation: orbDrift2 25s ease-in-out infinite;
+}
+
+.animated-bg__orb--3 {
+  width: 300px;
+  height: 300px;
+  background: linear-gradient(135deg, #a855f7, #ec4899);
+  bottom: -10%;
+  left: 30%;
+  animation: orbDrift3 22s ease-in-out infinite;
+}
+
+.animated-bg__orb--4 {
+  width: 250px;
+  height: 250px;
+  background: linear-gradient(135deg, #10b981, #06b6d4);
+  top: 30%;
+  left: 50%;
+  animation: orbDrift4 28s ease-in-out infinite;
+}
+
+.animated-bg__orb--5 {
+  width: 200px;
+  height: 200px;
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  top: 10%;
+  right: 20%;
+  animation: orbDrift5 18s ease-in-out infinite;
+}
+
+@keyframes orbDrift1 {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  25% {
+    transform: translate(80px, 60px) scale(1.1);
+  }
+
+  50% {
+    transform: translate(40px, 120px) scale(0.95);
+  }
+
+  75% {
+    transform: translate(-30px, 50px) scale(1.05);
+  }
+}
+
+@keyframes orbDrift2 {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  25% {
+    transform: translate(-70px, -50px) scale(1.05);
+  }
+
+  50% {
+    transform: translate(-120px, 30px) scale(1.1);
+  }
+
+  75% {
+    transform: translate(-40px, -80px) scale(0.95);
+  }
+}
+
+@keyframes orbDrift3 {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  25% {
+    transform: translate(60px, -70px) scale(1.08);
+  }
+
+  50% {
+    transform: translate(-50px, -100px) scale(0.92);
+  }
+
+  75% {
+    transform: translate(100px, -40px) scale(1.05);
+  }
+}
+
+@keyframes orbDrift4 {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  33% {
+    transform: translate(-90px, 70px) scale(1.1);
+  }
+
+  66% {
+    transform: translate(60px, -60px) scale(0.9);
+  }
+}
+
+@keyframes orbDrift5 {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  33% {
+    transform: translate(70px, 80px) scale(1.12);
+  }
+
+  66% {
+    transform: translate(-50px, 40px) scale(0.88);
   }
 }
 

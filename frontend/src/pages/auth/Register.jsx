@@ -100,7 +100,7 @@ const Register = () => {
 
             <button
                 type="submit"
-                className="btn btn-primary w-full mt-8"
+                className="btn btn-primary w-full mt-6"
                 disabled={loading}
             >
                 {loading ? (

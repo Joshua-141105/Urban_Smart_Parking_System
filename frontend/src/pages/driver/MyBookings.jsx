@@ -24,6 +24,8 @@ const MyBookings = () => {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState("all");
     const [searchQuery, setSearchQuery] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const PAGE_SIZE = 5;
 
     // Modal State
     const [modalState, setModalState] = useState({ type: 'NONE', bookingId: null });
@@ -103,6 +105,18 @@ const MyBookings = () => {
             booking.vehicleNumber.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesFilter && matchesSearch;
     });
+
+    // Pagination
+    const totalPages = Math.ceil(filteredBookings.length / PAGE_SIZE);
+    const paginatedBookings = filteredBookings.slice(
+        (currentPage - 1) * PAGE_SIZE,
+        currentPage * PAGE_SIZE
+    );
+
+    // Reset page when filter or search changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [filter, searchQuery]);
 
     const stats = {
         total: bookings.length,
@@ -257,28 +271,28 @@ const MyBookings = () => {
                         onClick={() => setFilter('all')}
                         className={`stat-card cursor-pointer transition-all text-center ${filter === 'all' ? 'ring-2 ring-accent-primary' : ''}`}
                     >
-                        <div className="stat-value text-xl">{stats.total}</div>
+                        <div className="stat-value text-xl" style={{ color: '#fff' }}>{stats.total}</div>
                         <div className="stat-label text-xs">All</div>
                     </button>
                     <button
                         onClick={() => setFilter('active')}
                         className={`stat-card cursor-pointer transition-all text-center ${filter === 'active' ? 'ring-2 ring-emerald-500' : ''}`}
                     >
-                        <div className="stat-value text-xl text-emerald-400">{stats.active}</div>
+                        <div className="stat-value text-xl" style={{ color: '#fff' }}>{stats.active}</div>
                         <div className="stat-label text-xs">Active</div>
                     </button>
                     <button
                         onClick={() => setFilter('completed')}
                         className={`stat-card cursor-pointer transition-all text-center ${filter === 'completed' ? 'ring-2 ring-indigo-500' : ''}`}
                     >
-                        <div className="stat-value text-xl text-secondary">{stats.completed}</div>
+                        <div className="stat-value text-xl" style={{ color: '#fff' }}>{stats.completed}</div>
                         <div className="stat-label text-xs">Completed</div>
                     </button>
                     <button
                         onClick={() => setFilter('cancelled')}
                         className={`stat-card cursor-pointer transition-all text-center ${filter === 'cancelled' ? 'ring-2 ring-red-500' : ''}`}
                     >
-                        <div className="stat-value text-xl text-red-400">{stats.cancelled}</div>
+                        <div className="stat-value text-xl" style={{ color: '#fff' }}>{stats.cancelled}</div>
                         <div className="stat-label text-xs">Cancelled</div>
                     </button>
                 </div>
@@ -320,133 +334,158 @@ const MyBookings = () => {
                         </p>
                     </div>
                 ) : (
-                    <div className="space-y-4">
-                        {filteredBookings.map((booking, index) => {
-                            const start = formatDateTime(booking.startTime);
-                            const end = formatDateTime(booking.endTime);
+                    <>
+                        <div className="space-y-4">
+                            {paginatedBookings.map((booking, index) => {
+                                const start = formatDateTime(booking.startTime);
+                                const end = formatDateTime(booking.endTime);
 
-                            return (
-                                <div
-                                    key={booking.id}
-                                    className="glass-card p-6 animate-fade-in-up"
-                                    style={{ animationDelay: `${index * 0.05}s` }}
-                                >
-                                    <div className="flex items-start gap-4">
-                                        {/* Icon */}
-                                        <div
-                                            className="w-14 h-14 rounded-xl flex-center shrink-0"
-                                            style={{
-                                                background: booking.status === 'ACTIVE'
-                                                    ? 'rgba(16, 185, 129, 0.15)'
-                                                    : 'rgba(99, 102, 241, 0.15)'
-                                            }}
-                                        >
-                                            <Car
-                                                size={28}
-                                                className={booking.status === 'ACTIVE' ? 'text-success' : 'text-accent'}
-                                            />
-                                        </div>
-
-                                        {/* Details */}
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-3 mb-2">
-                                                <h3 className="text-lg font-semibold truncate">{booking.parkingLotName}</h3>
-                                                {getStatusBadge(booking.status)}
+                                return (
+                                    <div
+                                        key={booking.id}
+                                        className="glass-card p-6 animate-fade-in-up"
+                                        style={{ animationDelay: `${index * 0.05}s` }}
+                                    >
+                                        <div className="flex items-start gap-4">
+                                            {/* Icon */}
+                                            <div
+                                                className="w-14 h-14 rounded-xl flex-center shrink-0"
+                                                style={{
+                                                    background: booking.status === 'ACTIVE'
+                                                        ? 'rgba(16, 185, 129, 0.15)'
+                                                        : 'rgba(99, 102, 241, 0.15)'
+                                                }}
+                                            >
+                                                <Car
+                                                    size={28}
+                                                    className={booking.status === 'ACTIVE' ? 'text-success' : 'text-accent'}
+                                                />
                                             </div>
 
-                                            <div className="flex items-center gap-4 text-sm text-secondary mb-2">
-                                                <span className="flex items-center gap-1">
-                                                    <MapPin size={14} />
-                                                    {booking.address}
-                                                </span>
-                                                <span className="flex items-center gap-1">
-                                                    <Car size={14} />
-                                                    Space: {booking.spaceNumber}
-                                                </span>
-                                            </div>
-
-                                            <div className="flex items-center gap-4 text-sm text-secondary">
-                                                <span className="flex items-center gap-1">
-                                                    <Calendar size={14} />
-                                                    {start.date}
-                                                </span>
-                                                <span className="flex items-center gap-1">
-                                                    <Clock size={14} />
-                                                    {start.time} - {end.time}
-                                                </span>
-                                                <span className="text-muted">({booking.duration} hours)</span>
-                                            </div>
-                                        </div>
-
-                                        {/* Right side - Amount & Actions */}
-                                        <div className="text-right shrink-0">
-                                            <p className="text-2xl font-bold mb-1">₹{booking.amount}</p>
-                                            <p className="text-xs text-muted mb-3">{booking.vehicleNumber}</p>
-
-                                            {booking.status === 'ACTIVE' && (
-                                                <div className="flex gap-2 justify-end">
-                                                    <button
-                                                        className="btn btn-primary btn-sm"
-                                                        onClick={() => navigate(`/navigation?lat=${booking.latitude}&lon=${booking.longitude}&name=${encodeURIComponent(booking.parkingLotName)}`)}
-                                                    >
-                                                        <Navigation size={14} />
-                                                        Navigate
-                                                    </button>
-                                                    {booking.canExtend && (
-                                                        <button
-                                                            className="btn btn-secondary btn-sm"
-                                                            onClick={() => handleExtendClick(booking.id)}
-                                                        >
-                                                            <RefreshCw size={14} />
-                                                            Extend
-                                                        </button>
-                                                    )}
-                                                    {booking.canCancel && (
-                                                        <button
-                                                            className="btn btn-danger btn-sm"
-                                                            onClick={() => handleCancelClick(booking.id)}
-                                                        >
-                                                            <XCircle size={14} />
-                                                            Cancel
-                                                        </button>
-                                                    )}
+                                            {/* Details */}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-3 mb-2">
+                                                    <h3 className="text-lg font-semibold truncate">{booking.parkingLotName}</h3>
+                                                    {getStatusBadge(booking.status)}
                                                 </div>
-                                            )}
-                                            {/* For Pending bookings */}
-                                            {booking.status === 'PENDING' && (
-                                                <button
-                                                    className="btn btn-danger btn-sm w-full mt-2"
-                                                    onClick={() => handleCancelClick(booking.id)}
-                                                >
-                                                    Cancel Booking
-                                                </button>
-                                            )}
 
-                                            {/* Review Button for Completed */}
-                                            {booking.status === 'COMPLETED' && (
-                                                <div className="flex gap-2 mt-2">
-                                                    <button
-                                                        className="btn btn-ghost btn-sm flex-1 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10"
-                                                        onClick={() => handleReviewClick(booking.id)}
-                                                    >
-                                                        <Star size={14} className="fill-current mr-1" />
-                                                        Rate
-                                                    </button>
-                                                    <button
-                                                        className="btn btn-ghost btn-sm flex-1 text-green-400 hover:text-green-300 hover:bg-green-400/10"
-                                                        onClick={() => handleDownloadReceipt(booking)}
-                                                    >
-                                                        <Download size={14} className="mr-1" />
-                                                        Receipt
-                                                    </button>
+                                                <div className="flex items-center gap-4 text-sm text-secondary mb-2">
+                                                    <span className="flex items-center gap-1">
+                                                        <MapPin size={14} />
+                                                        {booking.address}
+                                                    </span>
+                                                    <span className="flex items-center gap-1">
+                                                        <Car size={14} />
+                                                        Space: {booking.spaceNumber}
+                                                    </span>
                                                 </div>
-                                            )}
+
+                                                <div className="flex items-center gap-4 text-sm text-secondary">
+                                                    <span className="flex items-center gap-1">
+                                                        <Calendar size={14} />
+                                                        {start.date}
+                                                    </span>
+                                                    <span className="flex items-center gap-1">
+                                                        <Clock size={14} />
+                                                        {start.time} - {end.time}
+                                                    </span>
+                                                    <span className="text-muted">({booking.duration} hours)</span>
+                                                </div>
+                                            </div>
+
+                                            {/* Right side - Amount & Actions */}
+                                            <div className="text-right shrink-0">
+                                                <p className="text-2xl font-bold mb-1">₹{Number(booking.amount).toFixed(2)}</p>
+                                                <p className="text-xs text-muted mb-3">{booking.vehicleNumber}</p>
+
+                                                {booking.status === 'ACTIVE' && (
+                                                    <div className="flex gap-2 justify-end">
+                                                        <button
+                                                            className="btn btn-primary btn-sm"
+                                                            onClick={() => navigate(`/navigation?lat=${booking.latitude}&lon=${booking.longitude}&name=${encodeURIComponent(booking.parkingLotName)}`)}
+                                                        >
+                                                            <Navigation size={14} />
+                                                            Navigate
+                                                        </button>
+                                                        {booking.canExtend && (
+                                                            <button
+                                                                className="btn btn-secondary btn-sm"
+                                                                onClick={() => handleExtendClick(booking.id)}
+                                                            >
+                                                                <RefreshCw size={14} />
+                                                                Extend
+                                                            </button>
+                                                        )}
+                                                        {booking.canCancel && (
+                                                            <button
+                                                                className="btn btn-danger btn-sm"
+                                                                onClick={() => handleCancelClick(booking.id)}
+                                                            >
+                                                                <XCircle size={14} />
+                                                                Cancel
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                {/* For Pending bookings */}
+                                                {booking.status === 'PENDING' && (
+                                                    <button
+                                                        className="btn btn-danger btn-sm w-full mt-2"
+                                                        onClick={() => handleCancelClick(booking.id)}
+                                                    >
+                                                        Cancel Booking
+                                                    </button>
+                                                )}
+
+                                                {/* Review Button for Completed */}
+                                                {booking.status === 'COMPLETED' && (
+                                                    <div className="flex gap-2 mt-2">
+                                                        <button
+                                                            className="btn btn-ghost btn-sm flex-1 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10"
+                                                            onClick={() => handleReviewClick(booking.id)}
+                                                        >
+                                                            <Star size={14} className="fill-current mr-1" />
+                                                            Rate
+                                                        </button>
+                                                        <button
+                                                            className="btn btn-ghost btn-sm flex-1 text-green-400 hover:text-green-300 hover:bg-green-400/10"
+                                                            onClick={() => handleDownloadReceipt(booking)}
+                                                        >
+                                                            <Download size={14} className="mr-1" />
+                                                            Receipt
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Pagination Controls */}
+                        {totalPages > 1 && (
+                            <div className="flex items-center justify-center gap-4 mt-6">
+                                <button
+                                    className="btn btn-secondary btn-sm"
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                >
+                                    Previous
+                                </button>
+                                <span className="text-sm text-secondary">
+                                    Page {currentPage} of {totalPages}
+                                </span>
+                                <button
+                                    className="btn btn-secondary btn-sm"
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage === totalPages}
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        )}
+                    </>
                 )}
 
             </div>

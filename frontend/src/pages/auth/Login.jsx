@@ -76,11 +76,17 @@ const Login = () => {
                     />
                 </div>
 
+                <div style={{ textAlign: 'right' }}>
+                    <Link to="/forgot-password" className="text-accent text-sm font-medium hover:underline">
+                        Forgot Password?
+                    </Link>
+                </div>
+
             </div>
 
             <button
                 type="submit"
-                className="btn btn-primary w-full mt-8"
+                className="btn btn-primary w-full mt-6"
                 disabled={loading}
             >
                 {loading ? (

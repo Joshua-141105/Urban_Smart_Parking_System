@@ -1,4 +1,4 @@
-# EDITH Smart Parking System - Frontend
+# ParkVerse Smart Parking System - Frontend
 
 This is the React frontend for the Urban Smart Parking System.
 

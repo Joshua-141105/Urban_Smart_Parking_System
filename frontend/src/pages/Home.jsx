@@ -76,7 +76,7 @@ const Home = () => {
                         }}>
                             <Car style={{ width: '1.2vw', height: '1.2vw', minWidth: '12px', minHeight: '12px', maxWidth: '18px', maxHeight: '18px' }} className="text-white" />
                         </div>
-                        <span className="gradient-text" style={{ fontSize: 'max(1.1vw, 16px)', fontWeight: 700 }}>EDITH</span>
+                        <span className="gradient-text" style={{ fontSize: 'max(1.1vw, 16px)', fontWeight: 700 }}>ParkVerse</span>
                     </Link>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.8vw' }}>
@@ -136,7 +136,7 @@ const Home = () => {
                         maxWidth: '50vw', margin: '0 auto',
                         marginBottom: '2.5vw',
                     }}>
-                        EDITH transforms urban parking with real-time availability, intelligent routing,
+                        ParkVerse transforms urban parking with real-time availability, intelligent routing,
                         and dynamic pricing — reducing traffic congestion by up to 30%.
                     </p>
 
@@ -215,7 +215,7 @@ const Home = () => {
                         fontWeight: 700, marginBottom: 'max(0.8vw, 6px)',
                         fontFamily: 'var(--font-main)',
                     }}>
-                        Why Choose <span className="gradient-text">EDITH</span>?
+                        Why Choose <span className="gradient-text">ParkVerse</span>?
                     </h2>
                     <p style={{
                         fontSize: 'max(1vw, 12px)',
@@ -289,7 +289,7 @@ const Home = () => {
                             marginBottom: '2vw', lineHeight: 1.7,
                             fontSize: 'max(0.9vw, 11px)',
                         }}>
-                            Join thousands of smart drivers who save time, money, and frustration with EDITH.
+                            Join thousands of smart drivers who save time, money, and frustration with ParkVerse.
                         </p>
                         <Link to={user ? "/find-parking" : "/register"} className="btn btn-primary" style={{
                             fontSize: 'max(0.95vw, 12px)',
@@ -319,11 +319,11 @@ const Home = () => {
                         }}>
                             <Car style={{ width: 'max(1.1vw, 12px)', height: 'max(1.1vw, 12px)' }} className="text-white" />
                         </div>
-                        <span className="gradient-text" style={{ fontSize: 'max(1vw, 13px)', fontWeight: 700 }}>EDITH</span>
+                        <span className="gradient-text" style={{ fontSize: 'max(1vw, 13px)', fontWeight: 700 }}>ParkVerse</span>
                     </div>
 
                     <p style={{ color: 'var(--text-muted)', fontSize: 'max(0.8vw, 10px)' }}>
-                        © 2026 EDITH Smart Parking System. Urban Traffic Management Solution.
+                        © 2026 ParkVerse Smart Parking System. Urban Traffic Management Solution.
                     </p>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'max(1.5vw, 12px)' }}>
