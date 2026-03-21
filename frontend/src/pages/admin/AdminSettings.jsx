@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { User, Mail, Phone, Lock, Bell, Shield, Save, UserPlus, Users, ToggleLeft, ToggleRight } from "lucide-react";
+import { User, Mail, Phone, Bell, Shield, Save } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
@@ -24,11 +24,7 @@ const AdminSettings = () => {
         notifyPush: true
     });
 
-    // User Management
-    const [users, setUsers] = useState([]);
-    const [usersLoading, setUsersLoading] = useState(false);
-    const [showCreateModal, setShowCreateModal] = useState(false);
-    const [newUser, setNewUser] = useState({ username: "", email: "", password: "", role: "PARKING_MANAGER" });
+    // Note: User Management has been extracted to UserManagementPage.jsx
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -78,52 +74,11 @@ const AdminSettings = () => {
         }
     };
 
-    // User Management Functions
-    const fetchUsers = async () => {
-        setUsersLoading(true);
-        try {
-            const res = await api.get('/admin/users');
-            setUsers(res.data);
-        } catch (error) {
-            toast.error("Failed to load users");
-        } finally {
-            setUsersLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        if (activeTab === "users") {
-            fetchUsers();
-        }
-    }, [activeTab]);
-
-    const handleCreateUser = async () => {
-        try {
-            await api.post('/admin/users', newUser);
-            toast.success("User created successfully!");
-            setShowCreateModal(false);
-            setNewUser({ username: "", email: "", password: "", role: "PARKING_MANAGER" });
-            fetchUsers();
-        } catch (error) {
-            toast.error(error.response?.data?.message || "Failed to create user");
-        }
-    };
-
-    const handleToggleActive = async (userId, currentStatus) => {
-        try {
-            const endpoint = currentStatus ? 'deactivate' : 'activate';
-            await api.put(`/admin/users/${userId}/${endpoint}`);
-            toast.success(`User ${currentStatus ? 'deactivated' : 'activated'}!`);
-            fetchUsers();
-        } catch (error) {
-            toast.error("Failed to update user status");
-        }
-    };
+    // User Management logic previously here is now in UserManagementPage.jsx
 
     const tabs = [
         { id: "personal", label: "Profile", icon: <User size={18} /> },
-        { id: "preferences", label: "Preferences", icon: <Bell size={18} /> },
-        { id: "users", label: "User Management", icon: <Users size={18} /> }
+        { id: "preferences", label: "Preferences", icon: <Bell size={18} /> }
     ];
 
     return (
@@ -249,118 +204,19 @@ const AdminSettings = () => {
                             </div>
                         )}
 
-                        {/* User Management Tab */}
-                        {activeTab === "users" && (
-                            <div className="animate-fade-in space-y-6">
-                                <div className="flex justify-between items-center border-b border-white/10 pb-4 mb-6">
-                                    <h2 className="text-xl font-semibold">User Management</h2>
-                                    <button className="btn btn-primary text-sm" onClick={() => setShowCreateModal(true)}>
-                                        <UserPlus size={16} /> Create User
-                                    </button>
-                                </div>
-
-                                {usersLoading ? (
-                                    <div className="flex-center py-12">
-                                        <div className="animate-spin w-8 h-8 rounded-full border-2 border-accent-primary border-t-transparent"></div>
-                                    </div>
-                                ) : (
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-sm">
-                                            <thead>
-                                                <tr className="border-b border-white/10">
-                                                    <th className="text-left py-3 px-2">Username</th>
-                                                    <th className="text-left py-3 px-2">Email</th>
-                                                    <th className="text-left py-3 px-2">Role</th>
-                                                    <th className="text-left py-3 px-2">Status</th>
-                                                    <th className="text-center py-3 px-2">Actions</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {users.map((u) => (
-                                                    <tr key={u.id} className="border-b border-white/5 hover:bg-white/5">
-                                                        <td className="py-3 px-2">{u.username}</td>
-                                                        <td className="py-3 px-2 text-secondary">{u.email}</td>
-                                                        <td className="py-3 px-2">
-                                                            <span className="badge badge-neutral text-xs">{u.role}</span>
-                                                        </td>
-                                                        <td className="py-3 px-2">
-                                                            <span className={`badge ${u.isActive ? 'badge-success' : 'badge-danger'} text-xs`}>
-                                                                {u.isActive ? 'Active' : 'Inactive'}
-                                                            </span>
-                                                        </td>
-                                                        <td className="py-3 px-2 text-center">
-                                                            <button
-                                                                onClick={() => handleToggleActive(u.id, u.isActive)}
-                                                                className={`btn btn-sm ${u.isActive ? 'btn-danger' : 'btn-primary'}`}
-                                                                title={u.isActive ? 'Deactivate' : 'Activate'}
-                                                            >
-                                                                {u.isActive ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                        {/* Removed User Management Tab Here */}
 
                         {/* Save Button */}
-                        {activeTab !== "users" && (
-                            <div className="mt-8 pt-6 border-t border-white/10 flex justify-end">
-                                <button onClick={handleSave} disabled={loading} className="btn btn-primary px-8">
-                                    {loading ? 'Saving...' : <><Save size={18} /> Save Changes</>}
-                                </button>
-                            </div>
-                        )}
+                        <div className="mt-8 pt-6 border-t border-white/10 flex justify-end">
+                            <button onClick={handleSave} disabled={loading} className="btn btn-primary px-8">
+                                {loading ? 'Saving...' : <><Save size={18} /> Save Changes</>}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Create User Modal */}
-            {showCreateModal && (
-                <div className="fixed inset-0 bg-black/70 flex-center z-50" onClick={() => setShowCreateModal(false)}>
-                    <div className="glass-panel p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="text-xl font-semibold mb-4">Create New User</h3>
-                        <div className="space-y-4">
-                            <input
-                                type="text"
-                                placeholder="Username"
-                                className="input-field w-full"
-                                value={newUser.username}
-                                onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
-                            />
-                            <input
-                                type="email"
-                                placeholder="Email"
-                                className="input-field w-full"
-                                value={newUser.email}
-                                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                            />
-                            <input
-                                type="password"
-                                placeholder="Password"
-                                className="input-field w-full"
-                                value={newUser.password}
-                                onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                            />
-                            <select
-                                className="input-field w-full"
-                                value={newUser.role}
-                                onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-                            >
-                                <option value="PARKING_MANAGER">Parking Manager</option>
-                                <option value="CITY_ADMIN">City Admin</option>
-                            </select>
-                        </div>
-                        <div className="flex gap-4 mt-6">
-                            <button className="btn btn-secondary flex-1" onClick={() => setShowCreateModal(false)}>Cancel</button>
-                            <button className="btn btn-primary flex-1" onClick={handleCreateUser}>Create</button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Removed Create User Modal */}
         </div>
     );
 };

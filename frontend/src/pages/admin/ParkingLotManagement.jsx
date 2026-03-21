@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import {
     Building2,
@@ -11,7 +12,10 @@ import {
     X,
     Trash2,
     AlertTriangle,
-    IndianRupee
+    IndianRupee,
+    Car,
+    Clock,
+    Ticket
 } from "lucide-react";
 import { toast } from "react-toastify";
 
@@ -21,6 +25,17 @@ const ParkingLotManagement = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
+
+    // Spot Booking State
+    const [isSpotBookingOpen, setIsSpotBookingOpen] = useState(false);
+    const [spotBookingLot, setSpotBookingLot] = useState(null);
+    const [availableSpaces, setAvailableSpaces] = useState([]);
+    const [spotBookingLoading, setSpotBookingLoading] = useState(false);
+    const [spotForm, setSpotForm] = useState({
+        spaceId: "",
+        vehicleNumber: "",
+        durationHours: 1
+    });
 
     // Form State
     const [formData, setFormData] = useState({
@@ -140,6 +155,72 @@ const ParkingLotManagement = () => {
         }
     };
 
+    // ========== Spot Booking Handlers ==========
+
+    const handleOpenSpotBooking = async (lot) => {
+        setSpotBookingLot(lot);
+        setSpotForm({ spaceId: "", vehicleNumber: "", durationHours: 1 });
+        setIsSpotBookingOpen(true);
+        setSpotBookingLoading(true);
+
+        try {
+            const res = await fetch(`http://localhost:8080/api/parking/${lot.id}`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                const spaces = data.spaces || [];
+                const freeSpaces = spaces.filter(s => !s.isOccupied);
+                setAvailableSpaces(freeSpaces);
+                if (freeSpaces.length > 0) {
+                    setSpotForm(prev => ({ ...prev, spaceId: freeSpaces[0].id.toString() }));
+                }
+            } else {
+                toast.error("Failed to fetch available spaces");
+            }
+        } catch (err) {
+            toast.error("Error fetching spaces");
+        } finally {
+            setSpotBookingLoading(false);
+        }
+    };
+
+    const handleSpotBookingSubmit = async (e) => {
+        e.preventDefault();
+        if (!spotForm.spaceId || !spotForm.vehicleNumber) {
+            toast.error("Please fill all required fields");
+            return;
+        }
+
+        try {
+            const res = await fetch('http://localhost:8080/api/admin/offline-booking', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify({
+                    lotId: spotBookingLot.id,
+                    spaceId: parseInt(spotForm.spaceId),
+                    vehicleNumber: spotForm.vehicleNumber,
+                    durationHours: spotForm.durationHours
+                })
+            });
+
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+                toast.success(`Booking created! Amount: ₹${data.totalAmount?.toFixed(0)}`);
+                setIsSpotBookingOpen(false);
+                fetchLots(); // Refresh to update occupancy
+            } else {
+                toast.error(data.message || "Booking failed");
+            }
+        } catch (err) {
+            toast.error("Error creating offline booking");
+        }
+    };
+
     const filteredLots = lots.filter(lot =>
         lot.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         lot.city.toLowerCase().includes(searchTerm.toLowerCase())
@@ -204,6 +285,13 @@ const ParkingLotManagement = () => {
 
                         <div className="flex items-center gap-3 w-full md:w-auto mt-2 md:mt-0">
                             <button
+                                onClick={() => handleOpenSpotBooking(lot)}
+                                className="btn btn-primary btn-sm flex-1 md:flex-none"
+                            >
+                                <Ticket size={16} />
+                                Spot Booking
+                            </button>
+                            <button
                                 onClick={() => handleOpenModal(lot)}
                                 className="btn btn-secondary btn-sm flex-1 md:flex-none"
                             >
@@ -228,10 +316,21 @@ const ParkingLotManagement = () => {
                 )}
             </div>
 
-            {/* Modal */}
-            {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex-center bg-black/60 backdrop-blur-sm p-4">
-                    <div className="glass-panel w-full max-w-lg p-6 animate-scale-in">
+            {/* Modal — rendered via portal to escape layout filter */}
+            {isModalOpen && createPortal(
+                <div style={{
+                    position: 'fixed',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    zIndex: 9999,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: 'rgba(0,0,0,0.6)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    padding: '1rem',
+                }}>
+                    <div className="glass-panel" style={{ width: '100%', maxWidth: '500px', padding: '1.5rem', borderRadius: '1rem', maxHeight: '90vh', overflowY: 'auto' }}>
                         <div className="flex-between mb-6">
                             <h2 className="text-xl font-bold">
                                 {isEditMode ? 'Edit Parking Lot' : 'Create New Parking Lot'}
@@ -346,7 +445,115 @@ const ParkingLotManagement = () => {
                         </form>
                     </div>
                 </div>
-            )}
+            , document.body)}
+
+            {/* Spot Booking Modal — rendered via portal */}
+            {isSpotBookingOpen && createPortal(
+                <div style={{
+                    position: 'fixed',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    zIndex: 9999,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: 'rgba(0,0,0,0.6)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    padding: '1rem',
+                }}>
+                    <div className="glass-panel" style={{ width: '100%', maxWidth: '450px', padding: '1.5rem', borderRadius: '1rem', maxHeight: '90vh', overflowY: 'auto' }}>
+                        <div className="flex-between mb-6">
+                            <h2 className="text-xl font-bold flex items-center gap-2">
+                                <Ticket size={22} className="text-indigo-400" />
+                                Spot Booking
+                            </h2>
+                            <button onClick={() => setIsSpotBookingOpen(false)} className="text-secondary hover:text-white">
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <p className="text-sm text-secondary mb-4">
+                            Book a slot for an offline customer at <span className="text-white font-semibold">{spotBookingLot?.name}</span>
+                        </p>
+
+                        {spotBookingLoading ? (
+                            <div className="flex-center py-8">
+                                <div className="animate-spin w-8 h-8 rounded-full border-3 border-accent-primary border-t-transparent"></div>
+                            </div>
+                        ) : availableSpaces.length === 0 ? (
+                            <div className="text-center py-8 text-warning">
+                                <AlertTriangle size={32} className="mx-auto mb-2" />
+                                <p>No available spaces in this lot.</p>
+                            </div>
+                        ) : (
+                            <form onSubmit={handleSpotBookingSubmit} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium mb-1 flex items-center gap-1">
+                                        <Car size={14} /> Vehicle Number
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={spotForm.vehicleNumber}
+                                        onChange={(e) => setSpotForm({ ...spotForm, vehicleNumber: e.target.value.toUpperCase() })}
+                                        className="input-field"
+                                        placeholder="e.g. KA 01 AB 1234"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Select Space</label>
+                                    <select
+                                        value={spotForm.spaceId}
+                                        onChange={(e) => setSpotForm({ ...spotForm, spaceId: e.target.value })}
+                                        className="input-field"
+                                        required
+                                    >
+                                        {availableSpaces.map(space => (
+                                            <option key={space.id} value={space.id}>
+                                                {space.spaceNumber} ({space.vehicleType})
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <p className="text-xs text-secondary mt-1">{availableSpaces.length} spaces available</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-1 flex items-center gap-1">
+                                        <Clock size={14} /> Duration (hours)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        required
+                                        min="1"
+                                        max="24"
+                                        value={spotForm.durationHours}
+                                        onChange={(e) => setSpotForm({ ...spotForm, durationHours: parseInt(e.target.value) || 1 })}
+                                        className="input-field"
+                                    />
+                                </div>
+
+                                <div className="glass-card-static p-3 text-sm">
+                                    <p className="text-secondary">Estimated Cost:</p>
+                                    <p className="text-xl font-bold text-emerald-400">
+                                        ₹{((spotBookingLot?.baseRate || 30) * (spotForm.durationHours || 1)).toFixed(0)}
+                                    </p>
+                                </div>
+
+                                <div className="flex gap-3 mt-4 pt-4 border-t border-glass-border">
+                                    <button type="button" onClick={() => setIsSpotBookingOpen(false)} className="btn btn-ghost flex-1">
+                                        Cancel
+                                    </button>
+                                    <button type="submit" className="btn btn-primary flex-1">
+                                        <Ticket size={18} />
+                                        Confirm Booking
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+                    </div>
+                </div>
+            , document.body)}
         </div>
     );
 };

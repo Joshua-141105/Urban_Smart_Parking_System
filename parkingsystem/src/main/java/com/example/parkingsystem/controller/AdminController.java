@@ -12,6 +12,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.security.Principal;
+import java.util.Map;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -20,10 +24,84 @@ public class AdminController {
 
     private final ParkingLotRepository parkingLotRepository;
     private final ParkingSpaceRepository parkingSpaceRepository;
-    private final com.example.parkingsystem.repository.UserRepository userRepository;
-    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+    private final com.example.parkingsystem.repository.UserRepository userRepository; 
     private final com.example.parkingsystem.repository.BookingRepository bookingRepository;
     private final com.example.parkingsystem.repository.BookingArchiveRepository bookingArchiveRepository;
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+    private final com.example.parkingsystem.service.BookingService bookingService;
+
+    // ========== Offline Booking for Walk-in Customers ==========
+
+    @PostMapping("/offline-booking")
+    @PreAuthorize("hasRole('PARKING_MANAGER') or hasRole('CITY_ADMIN')")
+    public ResponseEntity<?> createOfflineBooking(@RequestBody Map<String, Object> request, Principal principal) {
+        try {
+            String username = principal.getName();
+            com.example.parkingsystem.entity.User admin = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            Long lotId = Long.valueOf(request.get("lotId").toString());
+            Long spaceId = Long.valueOf(request.get("spaceId").toString());
+            String vehicleNumber = (String) request.get("vehicleNumber");
+            Integer durationHours = Integer.valueOf(request.get("durationHours").toString());
+
+            // Verify the admin owns this lot
+            ParkingLot lot = parkingLotRepository.findById(lotId)
+                    .orElseThrow(() -> new RuntimeException("Parking lot not found"));
+
+            if (lot.getOwner() == null || !lot.getOwner().getId().equals(admin.getId())) {
+                return ResponseEntity.status(403).body(Map.of(
+                        "success", false,
+                        "message", "You can only book slots for parking lots you manage"));
+            }
+
+            com.example.parkingsystem.entity.Booking booking = bookingService.createOfflineBooking(
+                    admin.getId(), spaceId, lotId, vehicleNumber, durationHours);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "bookingId", booking.getId(),
+                    "totalAmount", booking.getTotalAmount(),
+                    "startTime", booking.getStartTime().toString(),
+                    "endTime", booking.getEndTime().toString(),
+                    "message", "Offline booking created successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/my-lots")
+    @PreAuthorize("hasRole('CITY_ADMIN') or hasRole('PARKING_MANAGER')")
+    public ResponseEntity<List<Map<String, Object>>> getMyParkingLots(Principal principal) {
+        String username = principal.getName();
+        com.example.parkingsystem.entity.User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<ParkingLot> lots = parkingLotRepository.findByOwnerId(user.getId());
+
+        // Transform to simplified map response for frontend map
+        List<Map<String, Object>> response = lots.stream().map(lot -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", lot.getId());
+            map.put("name", lot.getName());
+            map.put("latitude", lot.getLatitude());
+            map.put("longitude", lot.getLongitude());
+            map.put("totalSpaces", lot.getTotalCapacity());
+            map.put("baseRate", lot.getBaseRate());
+            
+            // Calculate live occupancy
+            // Ideally should be a count query, but for small dataset this is fine
+            long occupied = parkingSpaceRepository.countByParkingLotIdAndIsOccupiedTrue(lot.getId());
+            map.put("availableSpaces", lot.getTotalCapacity() - occupied);
+            map.put("occupancyPercentage", (double) occupied / lot.getTotalCapacity() * 100.0);
+            
+            return map;
+        }).collect(Collectors.toList());
+
+        return ResponseEntity.ok(response);
+    }
 
     @PostMapping("/parking-lots")
     @PreAuthorize("hasRole('CITY_ADMIN') or hasRole('SYSTEM_ADMIN')")
@@ -125,6 +203,48 @@ public class AdminController {
     @PreAuthorize("hasRole('CITY_ADMIN') or hasRole('SYSTEM_ADMIN')")
     public ResponseEntity<?> getAllParkingLots() {
         return ResponseEntity.ok(parkingLotRepository.findAll());
+    }
+
+    // ========== Bookings View Endpoint ==========
+
+    @GetMapping("/bookings")
+    @PreAuthorize("hasRole('PARKING_MANAGER') or hasRole('CITY_ADMIN') or hasRole('SYSTEM_ADMIN')")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public ResponseEntity<?> getBookings(Principal principal) {
+        String username = principal.getName();
+        com.example.parkingsystem.entity.User currentUser = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<com.example.parkingsystem.entity.Booking> bookings;
+
+        if (currentUser.getRole() == com.example.parkingsystem.entity.Role.SYSTEM_ADMIN) {
+            // System admin sees all bookings
+            bookings = bookingRepository.findAll();
+        } else {
+            // Parking managers and city admins see only bookings for their lots
+            bookings = bookingRepository.findByParkingSpace_ParkingLot_OwnerId(currentUser.getId());
+        }
+
+        // Transform to response maps with user details
+        List<Map<String, Object>> response = bookings.stream().map(booking -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", booking.getId());
+            map.put("userId", booking.getUser().getId());
+            map.put("username", booking.getUser().getUsername());
+            map.put("userEmail", booking.getUser().getEmail());
+            map.put("parkingLotName", booking.getParkingSpace().getParkingLot().getName());
+            map.put("parkingLotId", booking.getParkingSpace().getParkingLot().getId());
+            map.put("spaceNumber", booking.getParkingSpace().getSpaceNumber());
+            map.put("vehicleNumber", booking.getVehicleNumber());
+            map.put("startTime", booking.getStartTime() != null ? booking.getStartTime().toString() : null);
+            map.put("endTime", booking.getEndTime() != null ? booking.getEndTime().toString() : null);
+            map.put("status", booking.getStatus().name());
+            map.put("totalAmount", booking.getTotalAmount());
+            map.put("createdAt", booking.getCreatedAt() != null ? booking.getCreatedAt().toString() : null);
+            return map;
+        }).collect(Collectors.toList());
+
+        return ResponseEntity.ok(response);
     }
 
     // ========== User Management Endpoints ==========

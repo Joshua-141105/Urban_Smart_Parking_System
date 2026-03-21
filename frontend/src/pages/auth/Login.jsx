@@ -24,7 +24,20 @@ const Login = () => {
         setLoading(false);
 
         if (result.success) {
-            navigate("/dashboard");
+            const userStr = localStorage.getItem("user");
+            if (userStr) {
+                const userObj = JSON.parse(userStr);
+                const roles = userObj.roles || [];
+                if (roles.includes("CITY_ADMIN") || roles.includes("SYSTEM_ADMIN")) {
+                    navigate("/admin/dashboard");
+                } else if (roles.includes("PARKING_MANAGER")) {
+                    navigate("/manager/dashboard");
+                } else {
+                    navigate("/dashboard");
+                }
+            } else {
+                navigate("/dashboard");
+            }
         } else {
             setError(result.message);
         }

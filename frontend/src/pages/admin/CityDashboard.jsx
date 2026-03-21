@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import {
     AreaChart,
@@ -20,65 +19,97 @@ import {
     Car,
     AlertTriangle,
     Activity,
-    Zap,
-    CloudRain
+    Zap
 } from "lucide-react";
+import ParkingMap from "../../components/ParkingMap";
 
 const CityDashboard = () => {
     const [loading, setLoading] = useState(true);
-    const [cityStats, setCityStats] = useState({});
-    const [hotspots, setHotspots] = useState([]);
-    const [trendsData, setTrendsData] = useState([]);
+    const [cityStats, setCityStats] = useState({
+        totalLots: 0,
+        totalSpaces: 0,
+        currentOccupancy: 0,
+        avgOccupancyRate: 0,
+        todayRevenue: 0,
+        weekRevenue: 0,
+        trafficReduction: 0,
+        avgSearchTime: 0
+    });
+    const [parkingLots, setParkingLots] = useState([]);
     const [congestionAlerts, setCongestionAlerts] = useState([]);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // Fetch City Stats
-                const statsRes = await fetch('http://localhost:8080/api/analytics/city-stats', {
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-                });
-                if (statsRes.ok) {
-                    const data = await statsRes.json();
-                    setCityStats({
-                        totalLots: data.totalLots,
-                        totalSpaces: data.totalLots * 50, // rough estimate if not provided
-                        currentOccupancy: 0, // need to sum from lots
-                        avgOccupancyRate: 0,
-                        todayRevenue: data.totalRevenue,
-                        weekRevenue: data.totalRevenue * 7,
-                        trafficReduction: 28, // static for now
-                        avgSearchTime: 4.5    // static for now
+                // Fetch City Stats (Mock or Real)
+                // For now keeping the existing call but handling errors gracefully
+                try {
+                    const statsRes = await fetch('http://localhost:8080/api/analytics/city-stats', {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
                     });
+                    if (statsRes.ok) {
+                        const data = await statsRes.json();
+                        setCityStats({
+                            totalLots: data.totalLots,
+                            totalSpaces: data.totalLots * 50,
+                            currentOccupancy: 0,
+                            avgOccupancyRate: 0,
+                            todayRevenue: data.totalRevenue,
+                            weekRevenue: data.totalRevenue * 7,
+                            trafficReduction: 28,
+                            avgSearchTime: 4.5
+                        });
+                    }
+                } catch (e) {
+                    // Ignore analytics error and proceed
                 }
 
-                // Fetch All Lots for Heatmap
-                const lotsRes = await fetch('http://localhost:8080/api/parking/all', {
+                // Fetch Admin's Parking Lots
+                const lotsRes = await fetch('http://localhost:8080/api/admin/my-lots', {
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
                 });
+                
                 if (lotsRes.ok) {
                     const lots = await lotsRes.json();
 
-                    const mappedHotspots = lots.map(lot => ({
+                    // Map backend response to component expected format
+                    const mappedLots = lots.map(lot => ({
                         id: lot.id,
                         name: lot.name,
-                        lat: lot.latitude,
-                        lng: lot.longitude,
-                        occupancy: lot.occupiedSlots,
-                        capacity: lot.totalCapacity
+                        latitude: lot.latitude,
+                        longitude: lot.longitude,
+                        totalCapacity: lot.totalSpaces,
+                        availableSlots: lot.availableSpaces,
+                        baseRate: lot.baseRate,
+                        occupancyPercentage: lot.occupancyPercentage
                     }));
-                    setHotspots(mappedHotspots);
+                    
+                    setParkingLots(mappedLots);
 
-                    // Recalculate city stats based on real lot data
-                    const totalOcc = lots.reduce((acc, lot) => acc + lot.occupiedSlots, 0);
-                    const totalCap = lots.reduce((acc, lot) => acc + lot.totalCapacity, 0);
+                    // Recalculate stats based on real lot data
+                    const totalOcc = mappedLots.reduce((acc, lot) => acc + (lot.totalCapacity - lot.availableSlots), 0);
+                    const totalCap = mappedLots.reduce((acc, lot) => acc + lot.totalCapacity, 0);
 
                     setCityStats(prev => ({
                         ...prev,
-                        currentOccupancy: totalOcc,
+                        totalLots: mappedLots.length,
                         totalSpaces: totalCap,
+                        currentOccupancy: totalOcc,
                         avgOccupancyRate: totalCap > 0 ? Math.round((totalOcc / totalCap) * 100) : 0
                     }));
+
+                    // Generate congestion alerts from high occupancy lots
+                    const alerts = mappedLots
+                        .filter(lot => lot.occupancyPercentage >= 80)
+                        .map(lot => ({
+                            id: `alert-${lot.id}`,
+                            area: lot.name,
+                            severity: lot.occupancyPercentage >= 90 ? 'high' : 'medium',
+                            message: `High occupancy detected (${lot.occupancyPercentage}%). Consider dynamic pricing.`,
+                            time: 'Live'
+                        }));
+
+                    setCongestionAlerts(alerts);
                 }
 
                 setLoading(false);
@@ -91,16 +122,7 @@ const CityDashboard = () => {
         fetchData();
     }, []);
 
-    const getHotspotColor = (occupancyPercent) => {
-        if (occupancyPercent < 50) return '#10b981';
-        if (occupancyPercent < 80) return '#eab308';
-        if (occupancyPercent < 95) return '#f97316';
-        return '#ef4444';
-    };
 
-    const getHotspotRadius = (capacity) => {
-        return Math.max(15, Math.min(40, capacity / 4));
-    };
 
     if (loading) {
         return (
@@ -182,68 +204,39 @@ const CityDashboard = () => {
                 </div>
             </div>
 
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                {/* City Heatmap */}
-                <div className="glass-panel p-6 lg:col-span-2">
+            {/* Main Content - Full Width Heatmap */}
+            <div className="mb-8">
+                <div className="glass-panel p-6">
                     <div className="section-header">
                         <div>
-                            <h3 className="section-title">City-Wide Occupancy</h3>
-                            <p className="text-sm text-secondary">Real-time parking density</p>
-                        </div>
-                        <div className="flex flex-wrap gap-3 text-xs">
-                            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>Low</span>
-                            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-yellow-500"></span>Moderate</span>
-                            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-orange-500"></span>High</span>
-                            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>Critical</span>
+                            <h3 className="section-title">Parking Congestion Heatmap</h3>
+                            <p className="text-sm text-secondary">Real-time occupancy heatmap across all parking facilities</p>
                         </div>
                     </div>
-                    <div className="rounded-xl overflow-hidden" style={{ height: 400 }}>
-                        <MapContainer
-                            center={[12.9716, 77.5946]}
-                            zoom={11}
-                            style={{ height: "100%", width: "100%", background: 'var(--bg-primary)' }}
-                        >
-                            <TileLayer
-                                attribution='&copy; OpenStreetMap'
-                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                            />
-                            {hotspots.map((spot) => {
-                                const occupancyPercent = (spot.occupancy / spot.capacity) * 100;
-                                return (
-                                    <CircleMarker
-                                        key={spot.id}
-                                        center={[spot.lat, spot.lng]}
-                                        radius={getHotspotRadius(spot.capacity)}
-                                        fillColor={getHotspotColor(occupancyPercent)}
-                                        color={getHotspotColor(occupancyPercent)}
-                                        weight={2}
-                                        opacity={0.8}
-                                        fillOpacity={0.4}
-                                    >
-                                        <Popup>
-                                            <div className="p-1">
-                                                <h4 className="font-bold">{spot.name}</h4>
-                                                <p className="text-sm">Occupancy: {spot.occupancy}/{spot.capacity}</p>
-                                                <p className="text-sm font-semibold" style={{ color: getHotspotColor(occupancyPercent) }}>
-                                                    {Math.round(occupancyPercent)}% Full
-                                                </p>
-                                            </div>
-                                        </Popup>
-                                    </CircleMarker>
-                                );
-                            })}
-                        </MapContainer>
+                    <div className="rounded-xl overflow-hidden" style={{ height: 500 }}>
+                        <ParkingMap parkingLots={parkingLots} enableHeatmap={true} showBookingOptions={false} />
+                    </div>
+                </div>
+            </div>
+
+            {/* Occupancy Trends & Congestion Alerts at Bottom */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Occupancy Trends */}
+                <div className="glass-panel p-6 lg:col-span-2">
+                    <h3 className="text-lg font-semibold mb-1">City Occupancy Trends</h3>
+                    <p className="text-sm text-secondary mb-4">Real-time data visualization</p>
+                    <div className="flex-center h-[200px] text-secondary">
+                        <p>Historical trends data will appear here once enough data is collected.</p>
                     </div>
                 </div>
 
-                {/* Congestion Alerts */}
+                {/* Bottom Congestion Alerts */}
                 <div className="glass-panel p-6">
                     <div className="flex items-center gap-2 mb-4">
                         <AlertTriangle size={20} className="text-warning" />
-                        <h3 className="text-lg font-semibold">Congestion Alerts</h3>
+                        <h3 className="text-lg font-semibold">Active Congestion Alerts</h3>
                     </div>
-                    <div className="space-y-3 min-h-[100px]">
+                    <div className="space-y-3">
                         {congestionAlerts.length > 0 ? congestionAlerts.map((alert) => (
                             <div
                                 key={alert.id}
@@ -265,43 +258,6 @@ const CityDashboard = () => {
                             </div>
                         )}
                     </div>
-
-                    <div className="mt-6 pt-4" style={{ borderTop: '1px solid var(--glass-border)' }}>
-                        <h4 className="text-sm font-semibold mb-3">Quick Actions</h4>
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between glass-card-static p-2 mb-2">
-                                <div className="flex items-center gap-2">
-                                    <Zap size={16} className="text-accent-primary" />
-                                    <span className="text-sm">Auto-Surge Pricing</span>
-                                </div>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" className="sr-only peer" defaultChecked />
-                                    <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent-primary"></div>
-                                </label>
-                            </div>
-
-                            <button
-                                onClick={() => alert("Simulating Incident Report Modal")}
-                                className="btn btn-secondary btn-sm w-full justify-start hover:bg-red-500/20 hover:text-red-500 hover:border-red-500/50"
-                            >
-                                <AlertTriangle size={16} />
-                                Report Traffic Incident
-                            </button>
-                            <button className="btn btn-secondary btn-sm w-full justify-start">
-                                <CloudRain size={16} />
-                                Enable Weather Mode
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Occupancy Trends */}
-            <div className="glass-panel p-6">
-                <h3 className="text-lg font-semibold mb-1">City Occupancy Trends</h3>
-                <p className="text-sm text-secondary mb-4">Real-time data visualization</p>
-                <div className="flex-center h-[200px] text-secondary">
-                    <p>Historical trends data will appear here once enough data is collected.</p>
                 </div>
             </div>
         </div>

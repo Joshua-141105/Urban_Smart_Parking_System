@@ -41,4 +41,6 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     List<Booking> findByParkingSpace_ParkingLot_Id(Long parkingLotId);
 
     List<Booking> findByParkingSpaceId(Long spaceId);
+
+    List<Booking> findByParkingSpace_ParkingLot_OwnerId(Long ownerId);
 }

@@ -102,7 +102,7 @@ const Dashboard = () => {
             }
         };
 
-        if (user) {
+        if (user && !user.roles?.some(r => r.includes("CITY_ADMIN") || r.includes("SYSTEM_ADMIN") || r.includes("PARKING_MANAGER"))) {
             fetchDashboardData();
         }
     }, [user]);

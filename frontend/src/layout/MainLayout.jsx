@@ -17,7 +17,8 @@ import {
     User,
     LogIn,
     Settings,
-    Car
+    Car,
+    Users
 } from "lucide-react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -76,18 +77,32 @@ const MainLayout = () => {
                 { name: "Dashboard", path: "/manager/dashboard", icon: <LayoutDashboard size={20} /> },
                 { name: "Find Parking", path: "/find-parking", icon: <MapPin size={20} /> },
                 { name: "My Lots", path: "/manager/lots", icon: <Building2 size={20} /> },
-                { name: "Bookings", path: "/manager/bookings", icon: <History size={20} /> },
+                { name: "Bookings", path: "/admin/all-bookings", icon: <History size={20} /> },
+                { name: "Spot Booking", path: "/admin/booking", icon: <FileText size={20} /> },
+                { name: "Profile", path: "/profile", icon: <User size={20} /> },
             ];
         }
 
         if (roles.includes("CITY_ADMIN") || roles.includes("SYSTEM_ADMIN")) {
-            return [
+            const adminRoutes = [
                 { name: "Overview", path: "/admin/dashboard", icon: <LayoutDashboard size={20} /> },
                 { name: "City Heatmap", path: "/admin/city", icon: <Map size={20} /> },
                 { name: "Analytics", path: "/admin/analytics", icon: <BarChart3 size={20} /> },
-                { name: "Find Parking", path: "/find-parking", icon: <MapPin size={20} /> },
-                { name: "Settings", path: "/admin/settings", icon: <Settings size={20} /> },
+                { name: "All Bookings", path: "/admin/all-bookings", icon: <History size={20} /> },
+                { name: "Parking Lots", path: "/admin/parking-lots", icon: <Building2 size={20} /> }
             ];
+
+            if (roles.includes("CITY_ADMIN")) {
+                adminRoutes.push({ name: "Spot Booking", path: "/admin/booking", icon: <FileText size={20} /> });
+            }
+
+            if (roles.includes("SYSTEM_ADMIN")) {
+                adminRoutes.push({ name: "User Management", path: "/admin/users", icon: <Users size={20} /> });
+            }
+
+            adminRoutes.push({ name: "Settings", path: "/admin/settings", icon: <Settings size={20} /> });
+
+            return adminRoutes;
         }
 
         return [

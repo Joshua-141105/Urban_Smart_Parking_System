@@ -351,6 +351,66 @@ public class BookingService {
                 messagingTemplate.convertAndSend("/topic/parking/locks", update);
         }
 
+        /**
+         * Create a booking on behalf of an offline customer (admin/manager initiated).
+         * Bypasses payment lock flow. The space is marked occupied immediately.
+         */
+        @Transactional(rollbackFor = Exception.class)
+        public Booking createOfflineBooking(Long adminUserId, Long spaceId, Long lotId,
+                        String vehicleNumber, Integer durationHours) {
+
+                ParkingSpace space = parkingSpaceRepository.findByIdWithLock(spaceId)
+                                .orElseThrow(() -> new RuntimeException("Parking Space not found"));
+
+                // Verify the space belongs to the requested lot
+                if (!space.getParkingLot().getId().equals(lotId)) {
+                        throw new RuntimeException("Space does not belong to the specified lot");
+                }
+
+                if (space.isOccupied()) {
+                        throw new RuntimeException("Space is already occupied");
+                }
+
+                LocalDateTime startTime = LocalDateTime.now();
+                LocalDateTime endTime = startTime.plusHours(durationHours);
+
+                // Check overlapping bookings
+                List<BookingStatus> blockingStatuses = List.of(BookingStatus.ACTIVE, BookingStatus.PENDING);
+                List<Booking> overlapping = bookingRepository.findOverlappingBookingsWithStatuses(
+                                space.getId(), startTime, endTime, blockingStatuses);
+
+                if (!overlapping.isEmpty()) {
+                        throw new RuntimeException("Slot already booked for the selected time range");
+                }
+
+                // Use the admin user as the booking owner (offline customer has no account)
+                User adminUser = userRepository.findById(adminUserId)
+                                .orElseThrow(() -> new RuntimeException("Admin user not found"));
+
+                // Calculate price
+                double price = pricingEngineService.calculatePrice(
+                                space.getParkingLot(), space, adminUser, startTime, endTime);
+
+                Booking booking = Booking.builder()
+                                .user(adminUser)
+                                .parkingSpace(space)
+                                .startTime(startTime)
+                                .endTime(endTime)
+                                .status(BookingStatus.ACTIVE)
+                                .totalAmount(price)
+                                .vehicleNumber(vehicleNumber)
+                                .build();
+
+                booking = bookingRepository.save(booking);
+
+                // Mark space occupied immediately
+                space.setOccupied(true);
+                parkingSpaceRepository.save(space);
+                occupancyService.broadcastOccupancyUpdate(space.getParkingLot());
+
+                return booking;
+        }
+
         @Transactional
         public Booking extendBooking(Long bookingId, Integer extraHours) {
                 Booking booking = bookingRepository.findById(bookingId)

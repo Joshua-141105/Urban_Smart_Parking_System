@@ -17,8 +17,11 @@ import CityDashboard from "./pages/admin/CityDashboard";
 import NavigationPage from "./pages/driver/NavigationPage";
 import NotificationsPage from "./pages/driver/NotificationsPage";
 import ParkingLotManagement from "./pages/admin/ParkingLotManagement";
+import AdminBooking from "./pages/admin/AdminBooking";
+import AdminBookingsPage from "./pages/admin/AdminBookingsPage";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AnalyticsPage from "./pages/admin/AnalyticsPage";
+import UserManagementPage from "./pages/admin/UserManagementPage";
 import UserProfile from "./pages/driver/UserProfile";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { useAuth } from "./context/AuthContext";
@@ -74,6 +77,16 @@ function App() {
             <Route path="/manager/dashboard" element={<ManagerDashboard />} />
           </Route>
 
+          {/* Shared Admin/Manager Routes */}
+          <Route element={<ProtectedRoute allowedRoles={["PARKING_MANAGER", "CITY_ADMIN", "SYSTEM_ADMIN"]} />}>
+            <Route path="/admin/all-bookings" element={<AdminBookingsPage />} />
+          </Route>
+
+          {/* Offline / Spot Booking Routes */}
+          <Route element={<ProtectedRoute allowedRoles={["PARKING_MANAGER", "CITY_ADMIN"]} />}>
+            <Route path="/admin/booking" element={<AdminBooking />} />
+          </Route>
+
           {/* Admin / City Authority Routes */}
           <Route element={<ProtectedRoute allowedRoles={["CITY_ADMIN", "SYSTEM_ADMIN"]} />}>
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
@@ -81,6 +94,11 @@ function App() {
             <Route path="/admin/analytics" element={<AnalyticsPage />} />
             <Route path="/admin/parking-lots" element={<ParkingLotManagement />} />
             <Route path="/admin/settings" element={<AdminSettings />} />
+          </Route>
+
+          {/* System Admin Routes */}
+          <Route element={<ProtectedRoute allowedRoles={["SYSTEM_ADMIN"]} />}>
+            <Route path="/admin/users" element={<UserManagementPage />} />
           </Route>
         </Route>
       </Route>

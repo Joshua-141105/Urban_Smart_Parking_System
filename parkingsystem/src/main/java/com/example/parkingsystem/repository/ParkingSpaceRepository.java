@@ -17,6 +17,8 @@ public interface ParkingSpaceRepository extends JpaRepository<ParkingSpace, Long
 
     List<ParkingSpace> findByParkingLotId(Long parkingLotId);
 
+    long countByParkingLotIdAndIsOccupiedTrue(Long parkingLotId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM ParkingSpace p WHERE p.id = :id")
     Optional<ParkingSpace> findByIdWithLock(@Param("id") Long id);

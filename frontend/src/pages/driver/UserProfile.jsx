@@ -1,11 +1,15 @@
 import { useState, useEffect } from "react";
 import { User, Mail, Phone, Lock, MapPin, CreditCard, Bell, Shield, Award, Car, Save } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import api from "../../api/axios";
+import { toast } from "react-toastify";
 
 const UserProfile = () => {
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState("personal");
     const [loading, setLoading] = useState(false);
+    const [passwordData, setPasswordData] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    const [passwordLoading, setPasswordLoading] = useState(false);
 
     // Form states
     const [personalInfo, setPersonalInfo] = useState({
@@ -251,18 +255,75 @@ const UserProfile = () => {
                                 />
                             </div>
 
-                            {/* Change Password - full width */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', gridColumn: '1 / -1' }}>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                                    <Lock size={14} />
+                            {/* Change Password Section - full width */}
+                            <div style={{ gridColumn: '1 / -1', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1.5rem', marginTop: '0.5rem' }}>
+                                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem', fontWeight: 600, marginBottom: '1rem' }}>
+                                    <Lock size={16} />
                                     Change Password
-                                </label>
-                                <input
-                                    type="password"
-                                    placeholder="Enter new password to change"
-                                    className="input-field"
-                                />
-                                <p className="text-xs text-secondary" style={{ marginTop: '0.25rem' }}>Leave blank to keep current password</p>
+                                </h3>
+                                <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Current Password</label>
+                                        <input
+                                            type="password"
+                                            placeholder="Enter current password"
+                                            className="input-field"
+                                            value={passwordData.currentPassword}
+                                            onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                                        />
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>New Password</label>
+                                        <input
+                                            type="password"
+                                            placeholder="Enter new password"
+                                            className="input-field"
+                                            value={passwordData.newPassword}
+                                            onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                                        />
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Confirm Password</label>
+                                        <input
+                                            type="password"
+                                            placeholder="Confirm new password"
+                                            className="input-field"
+                                            value={passwordData.confirmPassword}
+                                            onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                                    <button
+                                        className="btn btn-primary text-sm"
+                                        disabled={passwordLoading || !passwordData.currentPassword || !passwordData.newPassword}
+                                        onClick={async () => {
+                                            if (passwordData.newPassword !== passwordData.confirmPassword) {
+                                                toast.error("Passwords do not match");
+                                                return;
+                                            }
+                                            if (passwordData.newPassword.length < 6) {
+                                                toast.error("New password must be at least 6 characters");
+                                                return;
+                                            }
+                                            setPasswordLoading(true);
+                                            try {
+                                                await api.put('/users/me/password', {
+                                                    currentPassword: passwordData.currentPassword,
+                                                    newPassword: passwordData.newPassword,
+                                                });
+                                                toast.success("Password updated successfully!");
+                                                setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
+                                            } catch (error) {
+                                                toast.error(error.response?.data?.message || "Failed to update password");
+                                            } finally {
+                                                setPasswordLoading(false);
+                                            }
+                                        }}
+                                    >
+                                        {passwordLoading ? 'Updating...' : <><Lock size={14} /> Update Password</>}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

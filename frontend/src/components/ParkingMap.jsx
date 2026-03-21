@@ -1,8 +1,9 @@
-import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline, Circle, Tooltip } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { useEffect, useMemo, useCallback } from "react";
-import { Navigation, Clock, Car, IndianRupee } from "lucide-react";
+import "leaflet.heat";
+import { useEffect, useMemo, useCallback, useState } from "react";
+import { Navigation, Clock, Car, IndianRupee, Layers, Map as MapIcon } from "lucide-react";
 
 // Fix Leaflet icon issue
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -94,6 +95,39 @@ const MapController = ({ center, zoom, initialFocus }) => {
     return null;
 };
 
+// Heatmap layer component using leaflet.heat
+const HeatmapLayer = ({ points }) => {
+    const map = useMap();
+
+    useEffect(() => {
+        if (!points || points.length === 0) return;
+
+        const heat = L.heatLayer(points, {
+            radius: 60,
+            blur: 40,
+            maxZoom: 17,
+            max: 1.0,
+            minOpacity: 0.35,
+            gradient: {
+                0.0: '#3b82f6',  // Blue - very low
+                0.25: '#06b6d4', // Cyan
+                0.4: '#10b981',  // Green
+                0.55: '#84cc16', // Lime
+                0.65: '#eab308', // Yellow
+                0.8: '#f97316',  // Orange
+                0.9: '#ef4444',  // Red
+                1.0: '#dc2626'   // Dark red
+            }
+        }).addTo(map);
+
+        return () => {
+            map.removeLayer(heat);
+        };
+    }, [points, map]);
+
+    return null;
+};
+
 const ParkingMap = ({
     parkingLots = [],
     userLocation,
@@ -101,8 +135,12 @@ const ParkingMap = ({
     onSelectLot,
     onBookLot,
     routeCoordinates = null,
-    showControls = true
+    showControls = true,
+    enableHeatmap = false,
+    showBookingOptions = true
 }) => {
+    const [viewMode, setViewMode] = useState(enableHeatmap ? 'heatmap' : 'markers'); // 'markers' or 'heatmap'
+
     // Center priority: userLocation > first parking lot > fallback to Bangalore
     const center = userLocation 
         || (parkingLots.length > 0 ? [parkingLots[0].latitude, parkingLots[0].longitude] : null)
@@ -115,12 +153,20 @@ const ParkingMap = ({
         return ((lot.totalCapacity - available) / lot.totalCapacity) * 100;
     }, []);
 
+    // Get occupancy color for heatmap
+    const getOccupancyColor = (percent) => {
+        if (percent < 50) return '#10b981'; // Green
+        if (percent < 80) return '#eab308'; // Yellow
+        if (percent < 95) return '#f97316'; // Orange
+        return '#ef4444'; // Red
+    };
+
     // Get status badge class
     const getStatusBadge = (percent) => {
-        if (percent < 50) return { class: 'badge-available', text: 'Available' };
-        if (percent < 80) return { class: 'badge-moderate', text: 'Filling Up' };
-        if (percent < 95) return { class: 'badge-busy', text: 'Almost Full' };
-        return { class: 'badge-full', text: 'Full' };
+        if (percent < 50) return { class: 'badge-available', text: 'Low Congestion' };
+        if (percent < 80) return { class: 'badge-moderate', text: 'Moderate Traffic' };
+        if (percent < 95) return { class: 'badge-busy', text: 'High Congestion' };
+        return { class: 'badge-full', text: 'Severe Congestion' };
     };
 
     const markerRefs = { current: {} }; // Using object to store refs without causing re-renders
@@ -171,12 +217,23 @@ const ParkingMap = ({
                     </Marker>
                 )}
 
-                {/* Parking lot markers */}
+                {/* Heatmap layer */}
+                {viewMode === 'heatmap' && (
+                    <HeatmapLayer
+                        points={parkingLots.map(lot => {
+                            const occ = getOccupancyPercent(lot);
+                            return [lot.latitude, lot.longitude, occ / 100];
+                        })}
+                    />
+                )}
+
+                {/* Parking lot visualization */}
                 {parkingLots.map((lot) => {
                     const occupancyPercent = getOccupancyPercent(lot);
                     const status = getStatusBadge(occupancyPercent);
                     const available = lot.availableSlots ?? (lot.totalCapacity - (lot.occupiedSlots || 0));
 
+                    // Marker Mode: Default Render
                     return (
                         <Marker
                             key={lot.id}
@@ -198,7 +255,8 @@ const ParkingMap = ({
                                     <div className="flex items-center gap-2 mb-2">
                                         <span className={`badge ${status.class}`}>{status.text}</span>
                                     </div>
-
+                                    
+                                    {/* ... popup content ... */}
                                     <div className="space-y-1 text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>
                                         <div className="flex items-center gap-2">
                                             <Car size={14} />
@@ -222,16 +280,18 @@ const ParkingMap = ({
                                         )}
                                     </div>
 
-                                    <button
-                                        className="btn btn-primary btn-sm w-full"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onBookLot && onBookLot(lot);
-                                        }}
-                                        disabled={available === 0}
-                                    >
-                                        {available > 0 ? 'Book Now' : 'No Spots Available'}
-                                    </button>
+                                    {showBookingOptions && (
+                                        <button
+                                            className="btn btn-primary btn-sm w-full"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onBookLot && onBookLot(lot);
+                                            }}
+                                            disabled={available === 0}
+                                        >
+                                            {available > 0 ? 'Book Now' : 'No Spots Available'}
+                                        </button>
+                                    )}
                                 </div>
                             </Popup>
                         </Marker>
@@ -250,28 +310,48 @@ const ParkingMap = ({
                 )}
             </MapContainer>
 
-            {/* Map Legend Overlay */}
+            {/* View Toggle Control */}
+            <div className="absolute top-4 left-14 z-[1000]">
+                 <div className="glass-card-static p-1 flex gap-1 rounded-lg">
+                    <button 
+                        onClick={() => setViewMode('markers')}
+                        className={`p-2 rounded-md transition-all ${viewMode === 'markers' ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-white/10 text-gray-400'}`}
+                        title="Parking Lots View"
+                    >
+                        <MapIcon size={20} />
+                    </button>
+                    <button 
+                        onClick={() => setViewMode('heatmap')}
+                        className={`p-2 rounded-md transition-all ${viewMode === 'heatmap' ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-white/10 text-gray-400'}`}
+                        title="Traffic Heatmap View"
+                    >
+                        <Layers size={20} />
+                    </button>
+                 </div>
+            </div>
+
+            {/* Map Legend (Conditional by mode) */}
             {showControls && (
                 <div className="absolute bottom-4 left-4 z-[1000] glass-card-static p-3">
                     <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-secondary)' }}>
-                        Availability
+                        {viewMode === 'heatmap' ? 'Congestion Level' : 'Availability'}
                     </p>
                     <div className="flex flex-col gap-1.5 text-xs">
                         <div className="flex items-center gap-2">
                             <span className="w-3 h-3 rounded-full" style={{ background: '#10b981' }}></span>
-                            <span style={{ color: 'var(--text-primary)' }}>&lt;50% Full</span>
+                            <span style={{ color: 'var(--text-primary)' }}>{viewMode === 'heatmap' ? 'Low Traffic' : '<50% Full'}</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <span className="w-3 h-3 rounded-full" style={{ background: '#eab308' }}></span>
-                            <span style={{ color: 'var(--text-primary)' }}>50-80% Full</span>
+                            <span style={{ color: 'var(--text-primary)' }}>{viewMode === 'heatmap' ? 'Moderate' : '50-80% Full'}</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <span className="w-3 h-3 rounded-full" style={{ background: '#f97316' }}></span>
-                            <span style={{ color: 'var(--text-primary)' }}>80-95% Full</span>
+                            <span style={{ color: 'var(--text-primary)' }}>{viewMode === 'heatmap' ? 'Heavy' : '80-95% Full'}</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <span className="w-3 h-3 rounded-full" style={{ background: '#ef4444' }}></span>
-                            <span style={{ color: 'var(--text-primary)' }}>&gt;95% Full</span>
+                            <span style={{ color: 'var(--text-primary)' }}>{viewMode === 'heatmap' ? 'Severe' : '>95% Full'}</span>
                         </div>
                     </div>
                 </div>

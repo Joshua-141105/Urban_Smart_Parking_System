@@ -10,11 +10,8 @@ import java.util.List;
 @Repository
 public interface ParkingLotRepository extends JpaRepository<ParkingLot, Long> {
     List<ParkingLot> findByCity(String city);
+    List<ParkingLot> findByOwnerId(Long ownerId);
 
     org.springframework.data.domain.Page<ParkingLot> findByNameContainingIgnoreCase(String name,
             org.springframework.data.domain.Pageable pageable);
-
-    // We will use custom query for Haversine later or do in memory if data volume
-    // low,
-    // but for now standard JPA.
 }
