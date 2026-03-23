@@ -11,7 +11,8 @@ import {
     Activity,
     ArrowRight,
     Settings,
-    AlertTriangle
+    AlertTriangle,
+    CheckCircle2
 } from "lucide-react";
 
 const AdminDashboard = () => {
@@ -33,107 +34,187 @@ const AdminDashboard = () => {
             title: "Parking Lots",
             value: stats.totalLots,
             suffix: "+",
-            icon: <Building2 size={24} />,
-            color: "rgba(99, 102, 241, 0.15)",
-            textColor: "var(--accent-secondary)",
+            icon: <Building2 size={20} />,
+            color: "rgba(99,102,241,0.15)",
+            textColor: "#a5b4fc",
+            iconColor: "#6366f1",
             trend: "+3 this month"
         },
         {
             title: "Total Users",
             value: stats.totalUsers.toLocaleString(),
-            icon: <Users size={24} />,
-            color: "rgba(139, 92, 246, 0.15)",
-            textColor: "#a855f7",
+            icon: <Users size={20} />,
+            color: "rgba(168,85,247,0.15)",
+            textColor: "#c084fc",
+            iconColor: "#a855f7",
             trend: "+127 this week"
         },
         {
             title: "Monthly Revenue",
             value: `₹${(stats.totalRevenue / 100000).toFixed(1)}L`,
-            icon: <IndianRupee size={24} />,
-            color: "rgba(16, 185, 129, 0.15)",
-            textColor: "var(--success)",
+            icon: <IndianRupee size={20} />,
+            color: "rgba(16,185,129,0.15)",
+            textColor: "#6ee7b7",
+            iconColor: "#10b981",
             trend: "+12% vs last month"
         },
         {
             title: "Active Bookings",
             value: stats.activeBookings,
-            icon: <Car size={24} />,
-            color: "rgba(6, 182, 212, 0.15)",
-            textColor: "#06b6d4",
+            icon: <Car size={20} />,
+            color: "rgba(6,182,212,0.15)",
+            textColor: "#67e8f9",
+            iconColor: "#06b6d4",
             trend: "Right now"
         }
     ];
 
     const quickActions = [
-        { title: "City Heatmap", description: "View city-wide parking density", icon: <Map size={20} />, link: "/admin/city" },
-        { title: "Analytics", description: "Revenue, Ratings & Predictions", icon: <BarChart3 size={20} />, link: "/admin/analytics" },
-        { title: "Manage Lots", description: "Add or edit parking lots", icon: <Building2 size={20} />, link: "/admin/parking-lots" },
-        { title: "Settings", description: "System configuration", icon: <Settings size={20} />, link: "/admin/settings" }
+        {
+            title: "City Heatmap",
+            description: "View city-wide parking density",
+            icon: <Map size={19} />,
+            link: "/admin/city",
+            gradient: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+        },
+        {
+            title: "Analytics",
+            description: "Revenue, Ratings & Predictions",
+            icon: <BarChart3 size={19} />,
+            link: "/admin/analytics",
+            gradient: 'linear-gradient(135deg, #10b981, #06b6d4)',
+        },
+        {
+            title: "Manage Lots",
+            description: "Add or edit parking lots",
+            icon: <Building2 size={19} />,
+            link: "/admin/parking-lots",
+            gradient: 'linear-gradient(135deg, #f59e0b, #f97316)',
+        },
+        {
+            title: "Settings",
+            description: "System configuration",
+            icon: <Settings size={19} />,
+            link: "/admin/settings",
+            gradient: 'linear-gradient(135deg, #6366f1, #a855f7)',
+        }
     ];
 
+    const services = [
+        { name: 'API Server', status: 'Healthy', detail: '12ms' },
+        { name: 'Database', status: 'Healthy', detail: '3ms' },
+        { name: 'WebSocket', status: 'Healthy', detail: '1,234 conn' },
+        { name: 'Payment Gateway', status: 'Healthy', detail: '99.99% uptime' }
+    ];
+
+    const alertStyles = {
+        warning: { border: '#f59e0b', bg: 'rgba(245,158,11,0.08)' },
+        info: { border: '#6366f1', bg: 'rgba(99,102,241,0.08)' },
+        success: { border: '#10b981', bg: 'rgba(16,185,129,0.08)' },
+    };
+
     return (
-        <div className="animate-fade-in">
+        <div className="animate-fade-in" style={{ maxWidth: '1200px', margin: '0 auto' }}>
             {/* Header */}
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold mb-2">
+            <div style={{ marginBottom: '2rem' }}>
+                <h1 style={{
+                    fontSize: 'clamp(1.625rem, 3vw, 2rem)', fontWeight: 800,
+                    letterSpacing: '-0.025em', marginBottom: '0.375rem',
+                }}>
                     <span className="gradient-text">Admin Overview</span>
                 </h1>
-                <p className="text-secondary">System performance and management dashboard</p>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                    System performance and management dashboard
+                </p>
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-4 gap-6 mb-8">
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '1rem', marginBottom: '1.5rem',
+            }}>
                 {quickStats.map((stat, index) => (
-                    <div key={index} className="stat-card">
-                        <div
-                            className="stat-icon"
-                            style={{ background: stat.color, color: stat.textColor }}
-                        >
-                            {stat.icon}
+                    <div key={index} style={{
+                        padding: '1.375rem',
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px solid rgba(255,255,255,0.07)',
+                        borderRadius: '14px',
+                        position: 'relative', overflow: 'hidden',
+                        transition: 'border-color 0.2s, transform 0.2s',
+                    }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.13)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '0.875rem' }}>
+                            <div>
+                                <p style={{ fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                                    {stat.title}
+                                </p>
+                                <p style={{ fontSize: '1.75rem', fontWeight: 800, lineHeight: 1, color: stat.textColor }}>
+                                    {stat.value}{stat.suffix || ''}
+                                </p>
+                            </div>
+                            <div style={{
+                                width: '42px', height: '42px', borderRadius: '11px', flexShrink: 0,
+                                background: stat.color, color: stat.iconColor,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                                {stat.icon}
+                            </div>
                         </div>
-                        <div className="stat-value" style={{ color: stat.textColor }}>
-                            {stat.value}{stat.suffix || ''}
-                        </div>
-                        <div className="stat-label">{stat.title}</div>
-                        <div className="stat-trend up">
-                            <TrendingUp size={14} />
-                            {stat.trend}
+                        <div style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+                            fontSize: '0.75rem', fontWeight: 600,
+                            color: stat.iconColor, background: stat.color,
+                            padding: '0.2rem 0.5rem', borderRadius: '6px',
+                        }}>
+                            <TrendingUp size={11} /> {stat.trend}
                         </div>
                     </div>
                 ))}
             </div>
 
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-3 gap-6 mb-8">
+            {/* Quick Actions + Alerts */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr minmax(0, 320px)', gap: '1rem', marginBottom: '1.5rem' }}>
                 {/* Quick Actions */}
-                <div className="col-span-2 glass-panel p-6">
-                    <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div style={{
+                    padding: '1.5rem',
+                    background: 'rgba(255,255,255,0.02)',
+                    border: '1px solid rgba(255,255,255,0.07)',
+                    borderRadius: '16px',
+                }}>
+                    <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1.25rem', color: '#f1f5f9' }}>
+                        Quick Actions
+                    </h2>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.875rem' }}>
                         {quickActions.map((action, index) => (
-                            <Link
-                                key={index}
-                                to={action.link}
-                                className="glass-card p-4 flex flex-col items-start gap-3 group relative overflow-hidden transition-all hover:-translate-y-1 hover:shadow-lg"
+                            <Link key={index} to={action.link} style={{
+                                padding: '1.125rem',
+                                background: 'rgba(255,255,255,0.03)',
+                                border: '1px solid rgba(255,255,255,0.07)',
+                                borderRadius: '12px',
+                                textDecoration: 'none',
+                                display: 'flex', flexDirection: 'column', gap: '0.875rem',
+                                transition: 'border-color 0.2s, transform 0.2s, background 0.2s',
+                            }}
+                                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.13)'; e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
                             >
-                                <div className="flex w-full justify-between items-start">
-                                    <div
-                                        className="w-12 h-12 rounded-xl flex-center text-white shadow-lg"
-                                        style={{
-                                            background: index === 0 ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' :
-                                                index === 1 ? 'linear-gradient(135deg, #10b981, #06b6d4)' :
-                                                    'linear-gradient(135deg, #f59e0b, #ef4444)'
-                                        }}
-                                    >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                    <div style={{
+                                        width: '40px', height: '40px', borderRadius: '10px', flexShrink: 0,
+                                        background: action.gradient,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        color: '#fff', boxShadow: '0 3px 10px rgba(0,0,0,0.2)',
+                                    }}>
                                         {action.icon}
                                     </div>
-                                    <ArrowRight size={18} className="text-secondary group-hover:text-white group-hover:translate-x-1 transition-transform" />
+                                    <ArrowRight size={14} style={{ color: 'var(--text-muted)', marginTop: '2px' }} />
                                 </div>
-
                                 <div>
-                                    <h4 className="font-semibold text-lg group-hover:text-white transition-colors">{action.title}</h4>
-                                    <p className="text-xs text-secondary group-hover:text-gray-300 transition-colors line-clamp-2">
-                                        {action.description}
-                                    </p>
+                                    <p style={{ fontWeight: 600, fontSize: '0.875rem', color: '#f1f5f9', marginBottom: '0.25rem' }}>{action.title}</p>
+                                    <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.4, margin: 0 }}>{action.description}</p>
                                 </div>
                             </Link>
                         ))}
@@ -141,55 +222,79 @@ const AdminDashboard = () => {
                 </div>
 
                 {/* Recent Alerts */}
-                <div className="glass-panel p-6">
-                    <div className="flex items-center gap-2 mb-4">
-                        <AlertTriangle size={18} className="text-warning" />
-                        <h2 className="text-lg font-semibold">Recent Alerts</h2>
+                <div style={{
+                    padding: '1.5rem',
+                    background: 'rgba(255,255,255,0.02)',
+                    border: '1px solid rgba(255,255,255,0.07)',
+                    borderRadius: '16px',
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+                        <AlertTriangle size={16} style={{ color: '#f59e0b' }} />
+                        <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#f1f5f9' }}>Recent Alerts</h2>
                     </div>
-                    <div className="space-y-3">
-                        {recentAlerts.map((alert) => (
-                            <div
-                                key={alert.id}
-                                className={`glass-card-static p-3 border-l-4 ${alert.type === 'warning' ? 'border-l-yellow-500' :
-                                    alert.type === 'info' ? 'border-l-blue-500' : 'border-l-green-500'
-                                    }`}
-                            >
-                                <p className="text-sm mb-1">{alert.message}</p>
-                                <p className="text-xs text-muted">{alert.time}</p>
-                            </div>
-                        ))}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                        {recentAlerts.map((alert) => {
+                            const s = alertStyles[alert.type];
+                            return (
+                                <div key={alert.id} style={{
+                                    padding: '0.75rem 0.875rem',
+                                    borderRadius: '10px',
+                                    background: s.bg,
+                                    borderLeft: `3px solid ${s.border}`,
+                                }}>
+                                    <p style={{ fontSize: '0.8125rem', color: '#e2e8f0', marginBottom: '0.25rem', lineHeight: 1.4 }}>
+                                        {alert.message}
+                                    </p>
+                                    <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: 0 }}>{alert.time}</p>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             </div>
 
             {/* System Status */}
-            <div className="glass-panel p-6">
-                <div className="flex-between mb-4">
-                    <h2 className="text-lg font-semibold">System Status</h2>
-                    <span className="badge badge-success">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400 mr-2 animate-pulse"></span>
+            <div style={{
+                padding: '1.5rem',
+                background: 'rgba(255,255,255,0.02)',
+                border: '1px solid rgba(255,255,255,0.07)',
+                borderRadius: '16px',
+            }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                    <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#f1f5f9' }}>System Status</h2>
+                    <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
+                        padding: '0.3rem 0.75rem', borderRadius: '999px',
+                        background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)',
+                        color: '#6ee7b7', fontSize: '0.75rem', fontWeight: 600,
+                    }}>
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', animation: 'pulse 2s infinite' }} />
                         All Systems Operational
                     </span>
                 </div>
-                <div className="grid grid-cols-4 gap-4">
-                    {[
-                        { name: 'API Server', status: 'Healthy', latency: '12ms' },
-                        { name: 'Database', status: 'Healthy', latency: '3ms' },
-                        { name: 'WebSocket', status: 'Healthy', connections: '1,234' },
-                        { name: 'Payment Gateway', status: 'Healthy', uptime: '99.99%' }
-                    ].map((service, i) => (
-                        <div key={i} className="glass-card-static p-4">
-                            <div className="flex items-center gap-2 mb-2">
-                                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                <span className="font-medium">{service.name}</span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+                    {services.map((service, i) => (
+                        <div key={i} style={{
+                            padding: '0.875rem 1rem',
+                            background: 'rgba(255,255,255,0.03)',
+                            border: '1px solid rgba(255,255,255,0.07)',
+                            borderRadius: '10px',
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.375rem' }}>
+                                <CheckCircle2 size={13} style={{ color: '#10b981', flexShrink: 0 }} />
+                                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#f1f5f9' }}>{service.name}</span>
                             </div>
-                            <p className="text-sm text-secondary">
-                                {service.latency || service.connections || service.uptime}
-                            </p>
+                            <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: 0 }}>{service.detail}</p>
                         </div>
                     ))}
                 </div>
             </div>
+
+            <style>{`
+                @media (max-width: 900px) {
+                    .admin-two-col { grid-template-columns: 1fr !important; }
+                }
+            `}</style>
         </div>
     );
 };

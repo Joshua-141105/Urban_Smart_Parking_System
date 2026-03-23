@@ -10,198 +10,134 @@ export const useNotifications = () => useContext(NotificationContext);
 export const NotificationProvider = ({ children }) => {
     const { user } = useAuth();
     const [notifications, setNotifications] = useState([]);
-    const hasShownLoginToasts = useRef(false);
-    const previousUserId = useRef(null);
+    const [loading, setLoading] = useState(false);
 
-    // Fetch notifications from backend when user logs in
+    // Track whether we've already shown toasts for this login session.
+    // Using sessionStorage so it resets on new tab / after logout.
+    const toastShownRef = useRef(false);
+
+    // ── Reset when user logs out ────────────────────────────────────────────
     useEffect(() => {
-        if (user) {
-            fetchNotifications();
-        } else {
-            // User logged out - reset state
+        if (!user) {
             setNotifications([]);
-            hasShownLoginToasts.current = false;
-            previousUserId.current = null;
+            toastShownRef.current = false;
+            sessionStorage.removeItem('pv_notif_toast_shown');
         }
     }, [user]);
 
-    // Detect fresh login vs page refresh
-    // A fresh login means the user ID changed from null to a value
+    // ── Fetch notifications only after a real login ─────────────────────────
+    // Triggered when user object appears (login) — NOT on every render.
     useEffect(() => {
-        if (user && user.id) {
-            const isNewLogin = previousUserId.current === null || previousUserId.current !== user.id;
-            const loginFlag = sessionStorage.getItem('parkverse_login_toast_shown');
-
-            if (isNewLogin && !loginFlag) {
-                // This is a fresh login - show toasts for unread notifications
-                hasShownLoginToasts.current = false;
-            }
-
-            previousUserId.current = user.id;
+        if (user?.id) {
+            fetchNotifications();
         }
-    }, [user]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?.id]);
 
-    // Show toasts only once on fresh login
-    useEffect(() => {
-        if (user && notifications.length > 0 && !hasShownLoginToasts.current) {
-            const loginFlag = sessionStorage.getItem('parkverse_login_toast_shown');
-            if (loginFlag) {
-                // Already shown toasts in this session (page was refreshed)
-                hasShownLoginToasts.current = true;
-                return;
-            }
-
-            const unread = notifications.filter(n => !n.read);
-            if (unread.length > 0) {
-                setTimeout(() => {
-                    unread.forEach(n => {
-                        if (n.type === 'danger') toast.error(n.message || n.title);
-                        else if (n.type === 'warning') toast.warn(n.message || n.title);
-                        else toast.info(n.message || n.title);
-                    });
-                }, 800);
-            }
-
-            hasShownLoginToasts.current = true;
-            // Mark in sessionStorage so page refresh won't re-trigger
-            sessionStorage.setItem('parkverse_login_toast_shown', 'true');
-        }
-    }, [user, notifications]);
-
-    const fetchNotifications = async () => {
+    // ── Core fetch ───────────────────────────────────────────────────────────
+    const fetchNotifications = useCallback(async () => {
+        if (!user?.id) return;
+        setLoading(true);
         try {
             const res = await api.get('/notifications');
             if (res.data && Array.isArray(res.data)) {
-                setNotifications(res.data.map(n => ({
-                    id: n.id,
-                    type: n.type || 'info',
-                    title: n.title || 'Notification',
-                    message: n.message,
-                    timestamp: n.timestamp || formatTimeAgo(n.createdAt),
-                    read: n.read || false,
-                    iconType: n.iconType || getIconType(n.type)
-                })));
+                setNotifications(res.data);
+
+                // Show unread toasts ONCE per login session
+                const sessionFlag = sessionStorage.getItem('pv_notif_toast_shown');
+                if (!sessionFlag && !toastShownRef.current) {
+                    const unread = res.data.filter(n => !n.read);
+                    if (unread.length > 0) {
+                        // Small delay so the page has settled
+                        setTimeout(() => {
+                            unread.slice(0, 3).forEach(n => {
+                                // Show at most 3 toasts to avoid spam
+                                if (n.type === 'danger') toast.error(n.title || n.message);
+                                else if (n.type === 'warning') toast.warn(n.title || n.message);
+                                else if (n.type === 'success') toast.success(n.title || n.message);
+                                else toast.info(n.title || n.message);
+                            });
+                        }, 900);
+                    }
+                    toastShownRef.current = true;
+                    sessionStorage.setItem('pv_notif_toast_shown', 'true');
+                }
             }
         } catch (error) {
-            // If API not available, use fallback mock data for development
-            console.warn('Notification API not available, using local state');
-            if (notifications.length === 0) {
-                setNotifications([
-                    {
-                        id: 1,
-                        type: "warning",
-                        title: "Parking Expiring Soon",
-                        message: "Parking expires in 15 minutes",
-                        timestamp: "Just now",
-                        read: false,
-                        iconType: 'clock'
-                    },
-                    {
-                        id: 2,
-                        type: "danger",
-                        title: "Overstay Warning",
-                        message: "You have 5 minutes before overstay charges apply",
-                        timestamp: "2 mins ago",
-                        read: false,
-                        iconType: 'alert'
-                    },
-                    {
-                        id: 3,
-                        type: "info",
-                        title: "Permit Expiry",
-                        message: "Your parking permit expires in 7 days",
-                        timestamp: "1 hour ago",
-                        read: true,
-                        iconType: 'file'
-                    },
-                    {
-                        id: 4,
-                        type: "info",
-                        title: "Payment Reminder",
-                        message: "Monthly pass due for renewal",
-                        timestamp: "1 day ago",
-                        read: true,
-                        iconType: 'credit'
-                    }
-                ]);
-            }
+            console.error('Failed to fetch notifications:', error);
+            // Do NOT fall back to demo/mock data — just leave state empty
+        } finally {
+            setLoading(false);
         }
-    };
+    }, [user?.id]);
 
-    const markAsRead = async (id) => {
-        // Optimistic UI update
-        setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    // ── Mark single notification as read ─────────────────────────────────────
+    const markAsRead = useCallback(async (id) => {
+        // Optimistic update
+        setNotifications(prev =>
+            prev.map(n => n.id === id ? { ...n, read: true } : n)
+        );
 
-        // Persist to backend
         try {
             await api.put(`/notifications/${id}/read`);
         } catch (error) {
-            console.warn('Failed to persist notification read status:', error);
+            console.warn('Failed to persist read status, reverting:', error);
+            // Revert optimistic update on failure
+            setNotifications(prev =>
+                prev.map(n => n.id === id ? { ...n, read: false } : n)
+            );
         }
-    };
+    }, []);
 
-    const markAllAsRead = async () => {
-        // Optimistic UI update
+    // ── Mark all as read ─────────────────────────────────────────────────────
+    const markAllAsRead = useCallback(async () => {
+        // Optimistic update
         setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-        toast.success("All notifications marked as read");
 
-        // Persist to backend
         try {
             await api.put('/notifications/read-all');
+            toast.success('All notifications marked as read');
         } catch (error) {
-            console.warn('Failed to persist mark-all-as-read:', error);
+            console.warn('Failed to mark all as read:', error);
+            // Revert
+            await fetchNotifications();
         }
-    };
+    }, [fetchNotifications]);
 
-    const deleteNotification = async (id) => {
-        // Optimistic UI update
+    // ── Delete notification ──────────────────────────────────────────────────
+    const deleteNotification = useCallback(async (id) => {
+        // Optimistic update
         setNotifications(prev => prev.filter(n => n.id !== id));
-        toast.info("Notification removed");
 
-        // Persist to backend
         try {
             await api.delete(`/notifications/${id}`);
+            toast.info('Notification removed');
         } catch (error) {
-            console.warn('Failed to delete notification from backend:', error);
+            console.warn('Failed to delete notification:', error);
+            // Revert by re-fetching
+            await fetchNotifications();
         }
-    };
+    }, [fetchNotifications]);
 
+    // ── Computed: only unread ────────────────────────────────────────────────
     const unreadCount = notifications.filter(n => !n.read).length;
+
+    // ── Allow manual refresh (e.g. from NotificationsPage) ──────────────────
+    const refresh = useCallback(() => {
+        fetchNotifications();
+    }, [fetchNotifications]);
 
     return (
         <NotificationContext.Provider value={{
             notifications,
+            loading,
             markAsRead,
             markAllAsRead,
             deleteNotification,
-            unreadCount
+            refresh,
+            unreadCount,
         }}>
             {children}
         </NotificationContext.Provider>
     );
 };
-
-// Helper functions
-function getIconType(type) {
-    switch (type) {
-        case 'warning': return 'clock';
-        case 'danger': return 'alert';
-        case 'info': return 'file';
-        default: return 'bell';
-    }
-}
-
-function formatTimeAgo(dateString) {
-    if (!dateString) return 'Just now';
-    const now = new Date();
-    const date = new Date(dateString);
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-    const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-}

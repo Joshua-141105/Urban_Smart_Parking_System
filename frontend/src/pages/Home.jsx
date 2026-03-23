@@ -18,25 +18,25 @@ const Home = () => {
 
     const features = [
         {
-            icon: <MapPin size={28} />,
+            icon: <MapPin size={22} />,
             title: "Real-Time Availability",
             description: "View live parking space availability across the city with our smart IoT sensors.",
             gradient: 'linear-gradient(135deg, #10b981, #0d9488)'
         },
         {
-            icon: <Clock size={28} />,
+            icon: <Clock size={22} />,
             title: "Smart Navigation",
             description: "Get the fastest route to available parking with real-time traffic integration.",
             gradient: 'linear-gradient(135deg, #3b82f6, #4f46e5)'
         },
         {
-            icon: <CreditCard size={28} />,
+            icon: <CreditCard size={22} />,
             title: "Seamless Payments",
             description: "Pay digitally with multiple options. No more fumbling for change.",
             gradient: 'linear-gradient(135deg, #a855f7, #db2777)'
         },
         {
-            icon: <TrendingUp size={28} />,
+            icon: <TrendingUp size={22} />,
             title: "Dynamic Pricing",
             description: "Fair pricing based on demand. Save money during off-peak hours.",
             gradient: 'linear-gradient(135deg, #f97316, #dc2626)'
@@ -44,295 +44,432 @@ const Home = () => {
     ];
 
     const stats = [
-        { value: "50+", label: "Parking Locations", icon: <Building2 size={24} /> },
-        { value: "1000+", label: "Parking Spaces", icon: <Car size={24} /> },
-        { value: "25 min", label: "Avg. Time Saved", icon: <Clock size={24} /> },
-        { value: "98%", label: "User Satisfaction", icon: <BarChart3 size={24} /> }
+        { value: "50+", label: "Parking Locations", icon: <Building2 size={20} /> },
+        { value: "1000+", label: "Parking Spaces", icon: <Car size={20} /> },
+        { value: "25 min", label: "Avg. Time Saved", icon: <Clock size={20} /> },
+        { value: "98%", label: "User Satisfaction", icon: <BarChart3 size={20} /> }
     ];
 
-    // Shared container style - fluid width, no fixed pixel max-width
-    const sectionPad = {
-        paddingLeft: '5%',
-        paddingRight: '5%',
-    };
-
     return (
-        <div style={{ minHeight: '100vh', width: '100%' }} className="mesh-gradient">
-            {/* Navigation */}
-            <nav className="glass-panel" style={{
+        <div style={{ minHeight: '100vh', width: '100%', background: 'var(--bg-primary)' }}>
+
+            {/* ── NAVBAR ── */}
+            <nav style={{
                 position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50,
-                borderRadius: 0, borderLeft: 'none', borderRight: 'none', borderTop: 'none',
+                background: 'rgba(10, 15, 26, 0.85)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                borderBottom: '1px solid rgba(255,255,255,0.06)',
             }}>
                 <div style={{
+                    maxWidth: '1200px', margin: '0 auto',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '1vw 5%',
+                    padding: '0 2rem', height: '64px',
                 }}>
-                    <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.5vw', textDecoration: 'none' }}>
+                    <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', textDecoration: 'none' }}>
                         <div style={{
-                            width: '2.2vw', height: '2.2vw', minWidth: '24px', minHeight: '24px',
-                            maxWidth: '32px', maxHeight: '32px',
-                            borderRadius: '0.4vw', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            background: 'var(--accent-gradient)',
+                            width: '34px', height: '34px',
+                            borderRadius: '10px',
+                            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            boxShadow: '0 4px 12px rgba(99,102,241,0.35)',
                         }}>
-                            <Car style={{ width: '1.2vw', height: '1.2vw', minWidth: '12px', minHeight: '12px', maxWidth: '18px', maxHeight: '18px' }} className="text-white" />
+                            <Car size={17} color="#fff" />
                         </div>
-                        <span className="gradient-text" style={{ fontSize: 'max(1.1vw, 16px)', fontWeight: 700 }}>ParkVerse</span>
+                        <span style={{
+                            fontSize: '1.15rem', fontWeight: 700,
+                            background: 'linear-gradient(135deg, #e0e7ff, #a5b4fc)',
+                            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                            backgroundClip: 'text', letterSpacing: '-0.01em',
+                        }}>ParkVerse</span>
                     </Link>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8vw' }}>
-                        {!user && (
-                            <>
-                                <Link to="/login" className="btn btn-ghost" style={{ fontSize: 'max(0.9vw, 12px)', padding: 'max(0.5vw, 6px) max(1.2vw, 12px)' }}>
-                                    Sign In
-                                </Link>
-                                <Link to="/register" className="btn btn-primary" style={{ fontSize: 'max(0.9vw, 12px)', padding: 'max(0.5vw, 6px) max(1.2vw, 12px)' }}>
-                                    Get Started <ArrowRight style={{ width: 'max(1vw, 14px)', height: 'max(1vw, 14px)' }} />
-                                </Link>
-                            </>
-                        )}
-                    </div>
+                    {!user && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <Link to="/login" style={{
+                                padding: '0.5rem 1.125rem',
+                                borderRadius: '8px',
+                                color: 'var(--text-secondary)',
+                                fontWeight: 500, fontSize: '0.875rem',
+                                textDecoration: 'none',
+                                transition: 'color 0.15s',
+                            }}
+                                onMouseEnter={e => e.currentTarget.style.color = '#fff'}
+                                onMouseLeave={e => e.currentTarget.style.color = 'var(--text-secondary)'}
+                            >
+                                Sign In
+                            </Link>
+                            <Link to="/register" style={{
+                                display: 'flex', alignItems: 'center', gap: '0.375rem',
+                                padding: '0.5rem 1.125rem',
+                                borderRadius: '8px',
+                                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                color: '#fff', fontWeight: 600, fontSize: '0.875rem',
+                                textDecoration: 'none',
+                                boxShadow: '0 2px 10px rgba(99,102,241,0.35)',
+                                transition: 'opacity 0.15s, transform 0.15s',
+                            }}
+                                onMouseEnter={e => { e.currentTarget.style.opacity = '0.9'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                            >
+                                Get Started <ArrowRight size={14} />
+                            </Link>
+                        </div>
+                    )}
                 </div>
             </nav>
 
-            {/* Hero Section */}
+            {/* ── HERO ── */}
             <section style={{
-                paddingTop: '10vw',
-                paddingBottom: '5vw',
-                ...sectionPad,
+                paddingTop: '140px', paddingBottom: '80px',
+                padding: '140px 2rem 80px',
                 position: 'relative', overflow: 'hidden',
+                textAlign: 'center',
             }}>
-                {/* Background effects */}
+                {/* Background glows */}
                 <div style={{
-                    position: 'absolute', top: '15%', left: '15%',
-                    width: '25vw', height: '25vw',
-                    background: 'rgba(99, 102, 241, 0.15)', borderRadius: '50%', filter: 'blur(80px)',
-                }}></div>
+                    position: 'absolute', top: '10%', left: '50%', transform: 'translateX(-50%)',
+                    width: '600px', height: '400px',
+                    background: 'radial-gradient(ellipse at center, rgba(99,102,241,0.18) 0%, transparent 70%)',
+                    pointerEvents: 'none',
+                }} />
                 <div style={{
-                    position: 'absolute', bottom: '15%', right: '15%',
-                    width: '25vw', height: '25vw',
-                    background: 'rgba(139, 92, 246, 0.15)', borderRadius: '50%', filter: 'blur(80px)',
-                }}></div>
+                    position: 'absolute', top: '30%', left: '15%',
+                    width: '280px', height: '280px',
+                    background: 'rgba(139,92,246,0.08)', borderRadius: '50%', filter: 'blur(60px)',
+                    pointerEvents: 'none',
+                }} />
+                <div style={{
+                    position: 'absolute', top: '20%', right: '15%',
+                    width: '220px', height: '220px',
+                    background: 'rgba(6,182,212,0.07)', borderRadius: '50%', filter: 'blur(60px)',
+                    pointerEvents: 'none',
+                }} />
 
-                <div style={{ maxWidth: '65vw', margin: '0 auto', textAlign: 'center', position: 'relative' }}>
-                    <span className="badge badge-info" style={{ marginBottom: '1.5vw', display: 'inline-flex', fontSize: 'max(0.85vw, 13px)', padding: 'max(0.4vw, 5px) max(1vw, 10px)' }}>
-                        <Zap style={{ width: 'max(0.8vw, 12px)', height: 'max(0.8vw, 12px)', marginRight: '0.3vw' }} />
-                        Smart City Solution
-                    </span>
-
-                    <h1 style={{
-                        fontSize: 'max(4vw, 28px)',
-                        fontWeight: 700, lineHeight: 1.15,
-                        marginBottom: '1.5vw',
-                        fontFamily: 'var(--font-main)',
+                <div style={{ position: 'relative', maxWidth: '760px', margin: '0 auto' }}>
+                    {/* Badge */}
+                    <div style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+                        padding: '0.35rem 0.875rem',
+                        borderRadius: '999px',
+                        background: 'rgba(99,102,241,0.12)',
+                        border: '1px solid rgba(99,102,241,0.25)',
+                        color: '#a5b4fc',
+                        fontSize: '0.78rem', fontWeight: 600,
+                        letterSpacing: '0.04em', textTransform: 'uppercase',
+                        marginBottom: '2rem',
                     }}>
-                        Urban Smart Parking
-                        <br />
-                        <span className="gradient-text">Reimagined</span>
+                        <Zap size={12} />
+                        Smart City Parking Solution
+                    </div>
+
+                    {/* Headline */}
+                    <h1 style={{
+                        fontSize: 'clamp(2.25rem, 5vw, 3.75rem)',
+                        fontWeight: 800, lineHeight: 1.1,
+                        letterSpacing: '-0.03em',
+                        marginBottom: '1.5rem',
+                        color: '#f1f5f9',
+                    }}>
+                        Urban Parking,{' '}
+                        <span style={{
+                            background: 'linear-gradient(135deg, #818cf8, #c084fc)',
+                            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+                        }}>Reimagined</span>
                     </h1>
 
+                    {/* Subheadline */}
                     <p style={{
-                        fontSize: 'max(1.3vw, 15px)',
-                        color: 'var(--text-secondary)', lineHeight: 1.7,
-                        maxWidth: '50vw', margin: '0 auto',
-                        marginBottom: '2.5vw',
+                        fontSize: 'clamp(1rem, 2vw, 1.15rem)',
+                        color: 'var(--text-secondary)',
+                        lineHeight: 1.75,
+                        maxWidth: '560px',
+                        margin: '0 auto 2.5rem',
                     }}>
                         ParkVerse transforms urban parking with real-time availability, intelligent routing,
                         and dynamic pricing — reducing traffic congestion by up to 30%.
                     </p>
 
-                    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 'max(1vw, 8px)' }}>
-                        <Link to={user ? "/find-parking" : "/register"} className="btn btn-primary animate-glow" style={{
-                            fontSize: 'max(1.1vw, 14px)',
-                            padding: 'max(0.8vw, 10px) max(2vw, 20px)',
-                        }}>
-                            <MapPin style={{ width: 'max(1.1vw, 14px)', height: 'max(1.1vw, 14px)' }} />
-                            Find Parking Now
+                    {/* CTAs */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0.875rem' }}>
+                        <Link to={user ? "/find-parking" : "/register"} style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                            padding: '0.75rem 1.75rem',
+                            borderRadius: '10px',
+                            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                            color: '#fff', fontWeight: 600, fontSize: '0.9375rem',
+                            textDecoration: 'none',
+                            boxShadow: '0 4px 20px rgba(99,102,241,0.4)',
+                            transition: 'transform 0.15s, box-shadow 0.15s',
+                        }}
+                            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(99,102,241,0.5)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(99,102,241,0.4)'; }}
+                        >
+                            <MapPin size={16} /> Find Parking Now
                         </Link>
-                        <a href="#features" className="btn btn-secondary" style={{
-                            fontSize: 'max(1.1vw, 14px)',
-                            padding: 'max(0.8vw, 10px) max(2vw, 20px)',
-                        }}>
+                        <a href="#features" style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                            padding: '0.75rem 1.75rem',
+                            borderRadius: '10px',
+                            background: 'rgba(255,255,255,0.05)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            color: 'var(--text-primary)', fontWeight: 500, fontSize: '0.9375rem',
+                            textDecoration: 'none',
+                            transition: 'background 0.15s, border-color 0.15s',
+                        }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.09)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
+                        >
                             Learn More
                         </a>
                     </div>
 
-                    {/* Go to Dashboard */}
                     {user && (
-                        <div style={{ marginTop: '1.5vw' }}>
-                            <Link to="/dashboard" className="btn btn-primary" style={{
-                                padding: 'max(0.7vw, 8px) max(2vw, 20px)',
-                                fontSize: 'max(1vw, 13px)',
-                                boxShadow: '0 0.5vw 2vw rgba(99, 102, 241, 0.4)',
-                            }}>
-                                Go to Dashboard <ArrowRight style={{ width: 'max(1.1vw, 14px)', height: 'max(1.1vw, 14px)' }} />
+                        <div style={{ marginTop: '1.5rem' }}>
+                            <Link to="/dashboard" style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                                padding: '0.625rem 1.5rem',
+                                borderRadius: '8px',
+                                background: 'rgba(99,102,241,0.15)',
+                                border: '1px solid rgba(99,102,241,0.3)',
+                                color: '#a5b4fc', fontWeight: 600, fontSize: '0.875rem',
+                                textDecoration: 'none',
+                                transition: 'background 0.15s',
+                            }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(99,102,241,0.25)'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'rgba(99,102,241,0.15)'}
+                            >
+                                Go to Dashboard <ArrowRight size={14} />
                             </Link>
                         </div>
                     )}
                 </div>
             </section>
 
-            {/* Stats Section */}
-            <section style={{ paddingTop: '4vw', paddingBottom: '4vw', ...sectionPad }}>
+            {/* ── STATS ── */}
+            <section style={{ padding: '0 2rem 80px' }}>
                 <div style={{
+                    maxWidth: '1200px', margin: '0 auto',
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(4, 1fr)',
-                    gap: 'max(1.2vw, 10px)',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                    gap: '1rem',
                 }}>
                     {stats.map((stat, index) => (
-                        <div
-                            key={index}
-                            className="stat-card animate-fade-in-up"
-                            style={{
-                                animationDelay: `${index * 0.1}s`,
-                                padding: 'max(1.2vw, 12px)',
-                                display: 'flex', alignItems: 'center', gap: 'max(0.8vw, 8px)',
-                            }}
+                        <div key={index} style={{
+                            padding: '1.5rem',
+                            background: 'rgba(255,255,255,0.03)',
+                            border: '1px solid rgba(255,255,255,0.07)',
+                            borderRadius: '14px',
+                            display: 'flex', alignItems: 'center', gap: '1rem',
+                            transition: 'border-color 0.2s, background 0.2s',
+                        }}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)'; e.currentTarget.style.background = 'rgba(99,102,241,0.06)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
                         >
                             <div style={{
-                                width: 'max(3vw, 32px)', height: 'max(3vw, 32px)',
-                                borderRadius: '0.6vw', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                background: 'rgba(99, 102, 241, 0.15)', color: 'var(--accent-secondary)', flexShrink: 0,
+                                width: '44px', height: '44px', borderRadius: '11px', flexShrink: 0,
+                                background: 'rgba(99,102,241,0.12)',
+                                color: '#a5b4fc',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
                             }}>
                                 {stat.icon}
                             </div>
                             <div>
-                                <div className="gradient-text" style={{
-                                    fontSize: 'max(1.6vw, 16px)',
-                                    fontWeight: 700, fontFamily: 'var(--font-main)', lineHeight: 1, marginBottom: '0.3vw',
+                                <div style={{
+                                    fontSize: '1.5rem', fontWeight: 800, lineHeight: 1,
+                                    marginBottom: '0.25rem',
+                                    background: 'linear-gradient(135deg, #f1f5f9, #a5b4fc)',
+                                    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
                                 }}>{stat.value}</div>
-                                <div style={{ fontSize: 'max(0.8vw, 10px)', color: 'var(--text-secondary)' }}>{stat.label}</div>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500 }}>{stat.label}</div>
                             </div>
                         </div>
                     ))}
                 </div>
             </section>
 
-            {/* Features Section */}
-            <section id="features" style={{ paddingTop: '4vw', paddingBottom: '4vw', ...sectionPad }}>
-                <div style={{ textAlign: 'center', marginBottom: '3vw' }} className="animate-fade-in">
-                    <h2 style={{
-                        fontSize: 'max(2.2vw, 18px)',
-                        fontWeight: 700, marginBottom: 'max(0.8vw, 6px)',
-                        fontFamily: 'var(--font-main)',
-                    }}>
-                        Why Choose <span className="gradient-text">ParkVerse</span>?
-                    </h2>
-                    <p style={{
-                        fontSize: 'max(1vw, 12px)',
-                        color: 'var(--text-secondary)', maxWidth: '45vw', margin: '0 auto', lineHeight: 1.7,
-                    }}>
-                        Our platform combines cutting-edge technology with user-friendly design
-                        to solve urban parking challenges.
-                    </p>
-                </div>
+            {/* ── FEATURES ── */}
+            <section id="features" style={{ padding: '0 2rem 100px' }}>
+                <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+                    {/* Section Header */}
+                    <div style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
+                        <h2 style={{
+                            fontSize: 'clamp(1.625rem, 3vw, 2.25rem)',
+                            fontWeight: 700, letterSpacing: '-0.025em',
+                            marginBottom: '0.875rem', color: '#f1f5f9',
+                        }}>
+                            Why Choose{' '}
+                            <span style={{
+                                background: 'linear-gradient(135deg, #818cf8, #c084fc)',
+                                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+                            }}>ParkVerse</span>?
+                        </h2>
+                        <p style={{
+                            fontSize: '1rem', color: 'var(--text-secondary)',
+                            maxWidth: '480px', margin: '0 auto', lineHeight: 1.7,
+                        }}>
+                            Our platform combines cutting-edge technology with user-friendly design
+                            to solve urban parking challenges.
+                        </p>
+                    </div>
 
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(4, 1fr)',
-                    gap: 'max(1.2vw, 10px)',
-                }}>
-                    {features.map((feature, index) => (
-                        <div
-                            key={index}
-                            className="glass-card animate-fade-in-up"
-                            style={{
-                                padding: 'max(1.5vw, 14px)',
-                                animationDelay: `${index * 0.15}s`,
-                                display: 'flex', flexDirection: 'column', gap: 'max(0.8vw, 8px)',
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                        gap: '1.25rem',
+                    }}>
+                        {features.map((feature, index) => (
+                            <div key={index} style={{
+                                padding: '1.75rem',
+                                background: 'rgba(255,255,255,0.03)',
+                                border: '1px solid rgba(255,255,255,0.07)',
+                                borderRadius: '16px',
+                                transition: 'transform 0.2s, border-color 0.2s, box-shadow 0.2s',
+                                cursor: 'default',
                             }}
-                        >
-                            <div style={{
-                                width: 'max(3.2vw, 36px)', height: 'max(3.2vw, 36px)',
-                                borderRadius: '0.7vw', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                background: feature.gradient, color: '#fff', flexShrink: 0,
-                            }}>
-                                {feature.icon}
-                            </div>
-                            <div>
+                                onMouseEnter={e => {
+                                    e.currentTarget.style.transform = 'translateY(-4px)';
+                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.14)';
+                                    e.currentTarget.style.boxShadow = '0 16px 40px rgba(0,0,0,0.25)';
+                                }}
+                                onMouseLeave={e => {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)';
+                                    e.currentTarget.style.boxShadow = 'none';
+                                }}
+                            >
+                                <div style={{
+                                    width: '46px', height: '46px', borderRadius: '12px',
+                                    background: feature.gradient,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    color: '#fff', marginBottom: '1.25rem',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+                                }}>
+                                    {feature.icon}
+                                </div>
                                 <h3 style={{
-                                    fontSize: 'max(1.1vw, 13px)',
-                                    fontWeight: 600, marginBottom: '0.3vw',
-                                    fontFamily: 'var(--font-main)',
+                                    fontSize: '1rem', fontWeight: 650,
+                                    marginBottom: '0.625rem', color: '#f1f5f9',
+                                    letterSpacing: '-0.01em',
                                 }}>{feature.title}</h3>
                                 <p style={{
-                                    fontSize: 'max(0.85vw, 11px)',
-                                    color: 'var(--text-secondary)', lineHeight: 1.6,
+                                    fontSize: '0.875rem', color: 'var(--text-secondary)',
+                                    lineHeight: 1.65, margin: 0,
                                 }}>{feature.description}</p>
                             </div>
-                        </div>
-                    ))}
-                </div>
-            </section>
-
-            {/* CTA Section */}
-            <section style={{ paddingTop: '4vw', paddingBottom: '4vw', ...sectionPad }}>
-                <div className="glass-panel" style={{
-                    padding: 'max(3.5vw, 24px) max(2.5vw, 16px)',
-                    textAlign: 'center', position: 'relative', overflow: 'hidden',
-                }}>
-                    {/* Background glow */}
-                    <div style={{
-                        position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
-                        width: '30vw', height: '15vw',
-                        background: 'rgba(99, 102, 241, 0.15)', borderRadius: '50%', filter: 'blur(60px)',
-                    }}></div>
-
-                    <div style={{ position: 'relative' }}>
-                        <Shield style={{ width: 'max(2.5vw, 28px)', height: 'max(2.5vw, 28px)', margin: '0 auto', marginBottom: '1.5vw', color: 'var(--accent-secondary)' }} />
-                        <h2 style={{
-                            fontSize: 'max(1.8vw, 16px)',
-                            fontWeight: 700, marginBottom: 'max(0.8vw, 6px)',
-                            fontFamily: 'var(--font-main)',
-                        }}>Ready to Transform Your Parking Experience?</h2>
-                        <p style={{
-                            color: 'var(--text-secondary)', maxWidth: '40vw', margin: '0 auto',
-                            marginBottom: '2vw', lineHeight: 1.7,
-                            fontSize: 'max(0.9vw, 11px)',
-                        }}>
-                            Join thousands of smart drivers who save time, money, and frustration with ParkVerse.
-                        </p>
-                        <Link to={user ? "/find-parking" : "/register"} className="btn btn-primary" style={{
-                            fontSize: 'max(0.95vw, 12px)',
-                            padding: 'max(0.7vw, 8px) max(1.8vw, 16px)',
-                        }}>
-                            Get Started Free <ArrowRight style={{ width: 'max(1.1vw, 14px)', height: 'max(1.1vw, 14px)' }} />
-                        </Link>
+                        ))}
                     </div>
                 </div>
             </section>
 
-            {/* Footer */}
+            {/* ── CTA BANNER ── */}
+            <section style={{ padding: '0 2rem 80px' }}>
+                <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+                    <div style={{
+                        padding: '4rem 2rem',
+                        borderRadius: '20px',
+                        background: 'rgba(99,102,241,0.07)',
+                        border: '1px solid rgba(99,102,241,0.2)',
+                        textAlign: 'center',
+                        position: 'relative', overflow: 'hidden',
+                    }}>
+                        <div style={{
+                            position: 'absolute', top: '-60px', left: '50%', transform: 'translateX(-50%)',
+                            width: '400px', height: '300px',
+                            background: 'radial-gradient(ellipse at center, rgba(99,102,241,0.2) 0%, transparent 65%)',
+                            pointerEvents: 'none',
+                        }} />
+                        <div style={{ position: 'relative' }}>
+                            <div style={{
+                                width: '52px', height: '52px', borderRadius: '14px',
+                                background: 'rgba(99,102,241,0.15)',
+                                border: '1px solid rgba(99,102,241,0.3)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                margin: '0 auto 1.5rem',
+                                color: '#a5b4fc',
+                            }}>
+                                <Shield size={22} />
+                            </div>
+                            <h2 style={{
+                                fontSize: 'clamp(1.375rem, 2.5vw, 1.875rem)',
+                                fontWeight: 700, letterSpacing: '-0.02em',
+                                marginBottom: '0.875rem', color: '#f1f5f9',
+                            }}>Ready to Transform Your Parking Experience?</h2>
+                            <p style={{
+                                color: 'var(--text-secondary)', maxWidth: '440px',
+                                margin: '0 auto 2rem', lineHeight: 1.7, fontSize: '0.9375rem',
+                            }}>
+                                Join thousands of smart drivers who save time, money, and frustration with ParkVerse.
+                            </p>
+                            <Link to={user ? "/find-parking" : "/register"} style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                                padding: '0.75rem 1.75rem',
+                                borderRadius: '10px',
+                                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                color: '#fff', fontWeight: 600, fontSize: '0.9375rem',
+                                textDecoration: 'none',
+                                boxShadow: '0 4px 20px rgba(99,102,241,0.4)',
+                                transition: 'transform 0.15s, box-shadow 0.15s',
+                            }}
+                                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(99,102,241,0.5)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(99,102,241,0.4)'; }}
+                            >
+                                Get Started Free <ArrowRight size={15} />
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* ── FOOTER ── */}
             <footer style={{
-                borderTop: '1px solid var(--glass-border)',
-                padding: 'max(2.5vw, 16px) 5%',
-                marginTop: '2vw',
+                borderTop: '1px solid rgba(255,255,255,0.06)',
+                padding: '2rem',
             }}>
                 <div style={{
+                    maxWidth: '1200px', margin: '0 auto',
                     display: 'flex', flexDirection: 'column', alignItems: 'center',
-                    gap: 'max(1vw, 8px)', textAlign: 'center',
+                    gap: '1rem', textAlign: 'center',
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5vw' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <div style={{
-                            width: 'max(2vw, 24px)', height: 'max(2vw, 24px)',
-                            borderRadius: '0.4vw', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            background: 'var(--accent-gradient)',
+                            width: '28px', height: '28px', borderRadius: '8px',
+                            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
-                            <Car style={{ width: 'max(1.1vw, 12px)', height: 'max(1.1vw, 12px)' }} className="text-white" />
+                            <Car size={14} color="#fff" />
                         </div>
-                        <span className="gradient-text" style={{ fontSize: 'max(1vw, 13px)', fontWeight: 700 }}>ParkVerse</span>
+                        <span style={{
+                            fontSize: '0.9375rem', fontWeight: 700,
+                            background: 'linear-gradient(135deg, #e0e7ff, #a5b4fc)',
+                            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+                        }}>ParkVerse</span>
                     </div>
-
-                    <p style={{ color: 'var(--text-muted)', fontSize: 'max(0.8vw, 10px)' }}>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
                         © 2026 ParkVerse Smart Parking System. Urban Traffic Management Solution.
                     </p>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 'max(1.5vw, 12px)' }}>
-                        <a href="#" style={{ color: 'var(--text-muted)', fontSize: 'max(0.8vw, 10px)', transition: 'color 0.2s', textDecoration: 'none' }}>Privacy</a>
-                        <a href="#" style={{ color: 'var(--text-muted)', fontSize: 'max(0.8vw, 10px)', transition: 'color 0.2s', textDecoration: 'none' }}>Terms</a>
-                        <a href="#" style={{ color: 'var(--text-muted)', fontSize: 'max(0.8vw, 10px)', transition: 'color 0.2s', textDecoration: 'none' }}>Contact</a>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                        {['Privacy', 'Terms', 'Contact'].map(item => (
+                            <a key={item} href="#" style={{
+                                color: 'var(--text-muted)', fontSize: '0.8125rem',
+                                textDecoration: 'none', transition: 'color 0.15s',
+                            }}
+                                onMouseEnter={e => e.currentTarget.style.color = 'var(--text-secondary)'}
+                                onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
+                            >{item}</a>
+                        ))}
                     </div>
                 </div>
             </footer>
+
+            {/* ── RESPONSIVE ── */}
+            <style>{`
+                @media (max-width: 640px) {
+                    nav > div { padding: 0 1.25rem !important; }
+                    section { padding-left: 1.25rem !important; padding-right: 1.25rem !important; }
+                    footer { padding: 1.5rem 1.25rem !important; }
+                }
+            `}</style>
         </div>
     );
 };
