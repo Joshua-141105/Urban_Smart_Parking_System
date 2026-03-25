@@ -412,6 +412,83 @@ def list_lots():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/best-time", methods=["GET"])
+def best_time():
+    """
+    GET /api/best-time
+    Optional params:
+      lotId   — parking lot ID (lot-specific if provided, generic otherwise)
+    Returns predicted occupancy for each hour (0-23) of the current day,
+    plus the hour with the lowest predicted occupancy (best time to park).
+    """
+    if _model is None:
+        return jsonify({"error": "Model not ready"}), 503
+
+    lot_id_raw = request.args.get("lotId")
+    lot_id = int(lot_id_raw) if lot_id_raw is not None else None
+
+    now = datetime.now()
+    dow = now.weekday()
+    is_weekend = 1 if dow >= 5 else 0
+
+    with _model_lock:
+        if lot_id is not None and _model is not None:
+            # Build all 24 rows in one DataFrame → single predict() call
+            batch = pd.DataFrame([{
+                "parking_lot_id":     lot_id,
+                "hour_of_day":        h,
+                "day_of_week":        dow,
+                "is_weekend":         is_weekend,
+                "bookings_last_hour": 0,
+            } for h in range(24)])
+            raw_preds = _model.predict(batch[FORECAST_FEATURES])
+        else:
+            m = _model_generic if _model_generic is not None else _model
+            batch = pd.DataFrame([{
+                "hour_of_day":        h,
+                "day_of_week":        dow,
+                "is_weekend":         is_weekend,
+                "bookings_last_hour": 0,
+            } for h in range(24)])
+            raw_preds = m.predict(batch[GENERIC_FEATURES])
+
+    hourly = []
+    for h, raw in enumerate(raw_preds):
+        pct = round(float(max(0.0, min(100.0, raw))), 1)
+        hourly.append({
+            "hour":               h,
+            "label":              f"{h:02d}:00",
+            "predictedOccupancy": pct,
+            "riskLevel":          risk_label(pct),
+        })
+
+    best = min(hourly, key=lambda x: x["predictedOccupancy"])
+    worst = max(hourly, key=lambda x: x["predictedOccupancy"])
+
+    # Find the best window: first contiguous low block
+    low_hours = [h["hour"] for h in hourly if h["riskLevel"] == "Low"]
+    if low_hours:
+        best_window_start = min(low_hours)
+        best_window_end   = min(best_window_start + 2, 23)
+        best_window = f"{best_window_start:02d}:00\u2013{best_window_end:02d}:00"
+    else:
+        best_window = f"{best['hour']:02d}:00"
+
+    return jsonify({
+        "lotId":          lot_id,
+        "dayOfWeek":      dow,
+        "isWeekend":      bool(is_weekend),
+        "hourly":         hourly,
+        "bestHour":       best["hour"],
+        "bestLabel":      best["label"],
+        "bestOccupancy":  best["predictedOccupancy"],
+        "worstHour":      worst["hour"],
+        "bestWindow":     best_window,
+        "confidence":     confidence_from_r2(_model_r2),
+        "modelVersion":   _model_version,
+    })
+
+
 if __name__ == "__main__":
     log.info("=== ParkVerse ML Server v2 (lot-specific forecast) ===")
     load_or_train()

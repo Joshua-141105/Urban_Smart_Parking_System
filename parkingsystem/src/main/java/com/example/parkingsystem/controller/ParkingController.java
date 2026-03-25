@@ -8,6 +8,7 @@ import com.example.parkingsystem.repository.ParkingSpaceRepository;
 import com.example.parkingsystem.repository.ReviewRepository;
 import com.example.parkingsystem.entity.Review;
 import com.example.parkingsystem.service.AvailabilityService;
+import com.example.parkingsystem.service.ParkingPredictionService;
 import com.example.parkingsystem.service.ParkingService;
 import com.example.parkingsystem.service.RouteEngineService;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,7 @@ public class ParkingController {
     private final ReviewRepository reviewRepository;
     private final RouteEngineService routeEngineService;
     private final AvailabilityService availabilityService;
+    private final ParkingPredictionService parkingPredictionService;
 
     /**
      * Get nearest parking lots based on user location.
@@ -293,9 +295,104 @@ public class ParkingController {
     @PostMapping
     @PreAuthorize("hasRole('PARKING_MANAGER') or hasRole('SYSTEM_ADMIN')")
     public ResponseEntity<?> createParkingLot(@RequestBody ParkingLotRequest request) {
-        // Implementation for creating parking lot
-        // This would be expanded based on requirements
         return ResponseEntity.ok("Parking lot creation endpoint");
+    }
+
+    // =========================================================================
+    // ML-powered user-facing endpoints
+    // =========================================================================
+
+    /**
+     * GET /api/parking/prediction/{lotId}
+     * Returns current + ML-predicted data for a single parking lot.
+     * Used by the frontend ParkingCard detail and BestTimeSuggestion component.
+     */
+    @GetMapping("/prediction/{lotId}")
+    public ResponseEntity<?> getParkingPrediction(@PathVariable Long lotId) {
+        Optional<ParkingLot> lotOpt = parkingLotRepository.findById(lotId);
+        if (lotOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        ParkingLot lot = lotOpt.get();
+        List<ParkingSpace> spaces = parkingSpaceRepository.findByParkingLotId(lotId);
+
+        long occupiedCount  = spaces.stream().filter(ParkingSpace::isOccupied).count();
+        long totalCapacity  = spaces.isEmpty() ? lot.getTotalCapacity() : spaces.size();
+        long currentAvail   = totalCapacity - occupiedCount;
+
+        // Fetch ML prediction
+        Map<String, Object> prediction = parkingPredictionService.getPrediction(
+                lotId, (double) currentAvail, (double) totalCapacity);
+
+        // Fetch best-time from ML server
+        Map<String, Object> bestTime = parkingPredictionService.getBestTime(lotId);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("lotId",                lotId);
+        response.put("name",                 lot.getName());
+        response.put("currentAvailability",  currentAvail);
+        response.put("totalCapacity",        totalCapacity);
+        response.put("predictedAvailability",prediction.get("predictedAvailability"));
+        response.put("predictedOccupancy",   prediction.get("predictedOccupancy"));
+        response.put("demandScore",          prediction.get("demandScore"));
+        response.put("recommendationScore",  prediction.get("recommendationScore"));
+        response.put("confidenceLevel",      prediction.get("confidenceLevel"));
+        response.put("fillingFastAlert",     prediction.get("fillingFastAlert"));
+        response.put("message",              prediction.get("message"));
+        response.put("mlFallback",           prediction.get("fallback"));
+        response.put("bestTimeToArrive",     bestTime.get("bestWindow"));
+        response.put("bestHour",             bestTime.get("bestHour"));
+        response.put("bestOccupancy",        bestTime.get("bestOccupancy"));
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * GET /api/parking/recommendations?lat=&lon=
+     * Returns all parking lots ranked by ML recommendation score (descending).
+     * Score formula: distance (30%) + cost (20%) + current avail (25%) + predicted avail (25%).
+     */
+    @GetMapping("/recommendations")
+    public ResponseEntity<List<Map<String, Object>>> getRecommendations(
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lon) {
+
+        double userLat = lat != null ? lat : 12.9716;
+        double userLon = lon != null ? lon : 77.5946;
+
+        List<ParkingLot> lots = parkingLotRepository.findAll();
+        List<Map<String, Object>> enriched = enrichLotsWithOccupancy(lots, userLat, userLon);
+
+        // Enrich each lot with ML prediction + recommendation score
+        for (Map<String, Object> lotData : enriched) {
+            parkingPredictionService.enrichLotWithPrediction(lotData);
+        }
+
+        // Sort by recommendation score descending
+        enriched.sort((a, b) -> {
+            double scoreA = toDouble(a.get("recommendationScore"));
+            double scoreB = toDouble(b.get("recommendationScore"));
+            return Double.compare(scoreB, scoreA);
+        });
+
+        return ResponseEntity.ok(enriched);
+    }
+
+    /**
+     * GET /api/parking/best-time/{lotId}
+     * Proxies the Flask /api/best-time endpoint for a specific lot.
+     * Returns hourly predicted occupancy + best window to arrive.
+     */
+    @GetMapping("/best-time/{lotId}")
+    public ResponseEntity<?> getBestTime(@PathVariable Long lotId) {
+        Map<String, Object> result = parkingPredictionService.getBestTime(lotId);
+        return ResponseEntity.ok(result);
+    }
+
+    private double toDouble(Object v) {
+        if (v == null) return 0.0;
+        if (v instanceof Number n) return n.doubleValue();
+        try { return Double.parseDouble(v.toString()); } catch (Exception e) { return 0.0; }
     }
 
     /**

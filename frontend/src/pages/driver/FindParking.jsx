@@ -1,7 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import ParkingMap from "../../components/ParkingMap";
-import { Search, Navigation, Loader2, MapPin, Car, IndianRupee, Clock, RefreshCw, Star, ChevronUp, ChevronDown, X } from "lucide-react";
+import MLPredictionBadge from "../../components/MLPredictionBadge";
+import BestTimeSuggestion from "../../components/BestTimeSuggestion";
+import useParkingPredictions from "../../hooks/useParkingPredictions";
+import {
+    Search, Navigation, Loader2, MapPin, Car, Clock,
+    RefreshCw, Star, ChevronUp, ChevronDown, Zap, TrendingUp, Award,
+} from "lucide-react";
 import api from "../../api/axios";
 import { useAuth } from "../../context/AuthContext";
 import { useWebSocket } from "../../context/WebSocketContext";
@@ -17,11 +23,22 @@ const FindParking = () => {
     const [isLocating, setIsLocating] = useState(false);
     const [lastUpdated, setLastUpdated] = useState(new Date());
     const [panelExpanded, setPanelExpanded] = useState(true);
+    const [sortMode, setSortMode] = useState("recommendation"); // "recommendation" | "distance"
+    const [expandedCardId, setExpandedCardId] = useState(null);
 
-    // WebSocket context for real-time updates
     const { occupancyUpdates } = useWebSocket();
 
-    // Fetch parking lots from API
+    // ── ML Predictions ────────────────────────────────────────────────────────
+    const lotIds = parkingLots.map(l => l.id);
+    const { predictions, loading: mlLoading, refresh: refreshML } = useParkingPredictions(lotIds);
+
+    // Merge ML data into lots
+    const enrichedLots = parkingLots.map(lot => ({
+        ...lot,
+        ...(predictions[lot.id] || {}),
+    }));
+
+    // ── Fetch parking lots ────────────────────────────────────────────────────
     const fetchParkingLots = useCallback(async (lat = 12.9716, lon = 77.5946) => {
         try {
             setLoading(true);
@@ -41,7 +58,7 @@ const FindParking = () => {
     }, []);
 
     const loadDemoData = () => {
-        const demoLots = [
+        setParkingLots([
             { id: 1, name: "M.G. Road Parking Complex", latitude: 12.9716, longitude: 77.5946, availableSlots: 15, totalCapacity: 50, baseRate: 40, distance: 0.5, eta: 3 },
             { id: 2, name: "Indiranagar Metro Parking", latitude: 12.9784, longitude: 77.6408, availableSlots: 5, totalCapacity: 30, baseRate: 35, distance: 2.1, eta: 8 },
             { id: 3, name: "Koramangala Forum Mall", latitude: 12.9352, longitude: 77.6135, availableSlots: 42, totalCapacity: 100, baseRate: 50, distance: 3.5, eta: 12 },
@@ -50,8 +67,7 @@ const FindParking = () => {
             { id: 6, name: "Jayanagar 4th Block", latitude: 12.9308, longitude: 77.5838, availableSlots: 3, totalCapacity: 40, baseRate: 30, distance: 4.2, eta: 15 },
             { id: 7, name: "HSR Layout Hub", latitude: 12.9116, longitude: 77.6389, availableSlots: 18, totalCapacity: 45, baseRate: 25, distance: 5.0, eta: 18 },
             { id: 8, name: "Whitefield IT Park", latitude: 12.9698, longitude: 77.7500, availableSlots: 55, totalCapacity: 150, baseRate: 20, distance: 12.0, eta: 35 },
-        ];
-        setParkingLots(demoLots);
+        ]);
     };
 
     useEffect(() => {
@@ -62,10 +78,7 @@ const FindParking = () => {
                     setUserLocation(loc);
                     fetchParkingLots(loc[0], loc[1]);
                 },
-                () => {
-                    console.log("Location access denied, defaulting to Bangalore");
-                    fetchParkingLots();
-                },
+                () => fetchParkingLots(),
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
         } else {
@@ -73,21 +86,19 @@ const FindParking = () => {
         }
     }, [fetchParkingLots]);
 
-    // Handle real-time occupancy updates from WebSocket
+    // Real-time occupancy updates via WebSocket
     useEffect(() => {
         if (occupancyUpdates && Object.keys(occupancyUpdates).length > 0) {
-            setParkingLots(prevLots =>
-                prevLots.map(lot => {
-                    if (occupancyUpdates[lot.id]) {
-                        return {
-                            ...lot,
-                            availableSlots: occupancyUpdates[lot.id].availableSlots,
-                            totalCapacity: occupancyUpdates[lot.id].totalCapacity || lot.totalCapacity
-                        };
-                    }
-                    return lot;
-                })
-            );
+            setParkingLots(prev => prev.map(lot => {
+                if (occupancyUpdates[lot.id]) {
+                    return {
+                        ...lot,
+                        availableSlots: occupancyUpdates[lot.id].availableSlots,
+                        totalCapacity: occupancyUpdates[lot.id].totalCapacity || lot.totalCapacity,
+                    };
+                }
+                return lot;
+            }));
             setLastUpdated(new Date());
         }
     }, [occupancyUpdates]);
@@ -101,10 +112,7 @@ const FindParking = () => {
                     setUserLocation(loc);
                     fetchParkingLots(loc[0], loc[1]).finally(() => setIsLocating(false));
                 },
-                (error) => {
-                    console.error("Location error:", error);
-                    setIsLocating(false);
-                },
+                () => setIsLocating(false),
                 { enableHighAccuracy: true }
             );
         } else {
@@ -118,11 +126,11 @@ const FindParking = () => {
         } else {
             fetchParkingLots();
         }
+        refreshML();
     };
 
     const [routeCoordinates, setRouteCoordinates] = useState(null);
 
-    // Fetch Route when selectedLot changes
     useEffect(() => {
         if (selectedLot && userLocation) {
             const fetchRoute = async () => {
@@ -131,8 +139,7 @@ const FindParking = () => {
                     const res = await fetch(url);
                     const data = await res.json();
                     if (data.routes && data.routes.length > 0) {
-                        const coords = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
-                        setRouteCoordinates(coords);
+                        setRouteCoordinates(data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]));
                     }
                 } catch (err) {
                     console.error("Failed to fetch route preview", err);
@@ -155,8 +162,7 @@ const FindParking = () => {
 
     const getOccupancyPercent = (lot) => {
         if (!lot.totalCapacity) return 0;
-        const available = lot.availableSlots ?? 0;
-        return ((lot.totalCapacity - available) / lot.totalCapacity) * 100;
+        return ((lot.totalCapacity - (lot.availableSlots ?? 0)) / lot.totalCapacity) * 100;
     };
 
     const getStatusBadge = (percent) => {
@@ -166,17 +172,32 @@ const FindParking = () => {
         return { class: 'badge-full', text: 'Full' };
     };
 
-    // Filter and sort lots
-    const filteredLots = parkingLots.filter(lot =>
+    // ── Filter + sort ─────────────────────────────────────────────────────────
+    const filteredLots = enrichedLots.filter(lot =>
         lot.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
-    const sortedLots = [...filteredLots].sort((a, b) => (a.distance || 0) - (b.distance || 0));
+
+    const sortedLots = [...filteredLots].sort((a, b) => {
+        if (sortMode === "recommendation") {
+            const scoreA = a.recommendationScore ?? (100 - (a.distance || 0) * 5);
+            const scoreB = b.recommendationScore ?? (100 - (b.distance || 0) * 5);
+            return scoreB - scoreA;
+        }
+        return (a.distance || 0) - (b.distance || 0);
+    });
+
+    const topLotId = sortedLots.length > 0 ? sortedLots[0].id : null;
+
+    // Filling-fast alert: any lot within 5 km that's filling fast
+    const nearbyFillingFast = enrichedLots.filter(
+        l => l.fillingFastAlert && (l.distance || 0) <= 5
+    );
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
     const totalPages = Math.ceil(sortedLots.length / itemsPerPage);
-    useEffect(() => { setCurrentPage(1); }, [searchQuery]);
+    useEffect(() => { setCurrentPage(1); }, [searchQuery, sortMode]);
     const startIndex = (currentPage - 1) * itemsPerPage;
     const currentLots = sortedLots.slice(startIndex, startIndex + itemsPerPage);
 
@@ -184,7 +205,6 @@ const FindParking = () => {
     useEffect(() => {
         if (listRef.current) listRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     }, [currentPage]);
-
     useEffect(() => {
         if (selectedLot) {
             const el = document.getElementById(`lot-${selectedLot.id}`);
@@ -192,28 +212,55 @@ const FindParking = () => {
         }
     }, [selectedLot]);
 
-    // --- Parking Card Component ---
-    const ParkingCard = ({ lot, index }) => {
+    // ── Parking Card ─────────────────────────────────────────────────────────
+    const ParkingCard = ({ lot, isTop }) => {
         const occupancyPercent = getOccupancyPercent(lot);
         const status = getStatusBadge(occupancyPercent);
         const available = lot.availableSlots ?? 0;
+        const isSelected = selectedLot?.id === lot.id;
+        const isExpanded = expandedCardId === lot.id;
+
+        const predAvail = lot.predictedAvailability;
+        const confidence = lot.confidenceLevel;
+        const demandScore = lot.demandScore;
+        const mlReady = demandScore != null;
 
         return (
             <div
                 id={`lot-${lot.id}`}
-                className={`transition-all duration-200 cursor-pointer`}
+                className="transition-all duration-200 cursor-pointer"
                 onClick={() => setSelectedLot(lot)}
                 style={{
-                    padding: '1rem',
+                    padding: '0.875rem 1rem',
                     borderBottom: '1px solid var(--glass-border)',
-                    background: selectedLot?.id === lot.id ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
-                    borderLeft: selectedLot?.id === lot.id ? '3px solid var(--accent-primary)' : '3px solid transparent',
+                    background: isSelected ? 'rgba(99,102,241,0.1)' : isTop ? 'rgba(16,185,129,0.05)' : 'transparent',
+                    borderLeft: isSelected
+                        ? '3px solid var(--accent-primary)'
+                        : isTop
+                        ? '3px solid #10b981'
+                        : '3px solid transparent',
+                    transition: 'background 0.2s',
                 }}
             >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                {/* Top Recommended badge */}
+                {isTop && (
+                    <div style={{
+                        display: 'flex', alignItems: 'center', gap: '0.3rem',
+                        marginBottom: '0.4rem', fontSize: '0.68rem', fontWeight: 700,
+                        color: '#6ee7b7',
+                    }}>
+                        <Award size={11} style={{ color: '#10b981' }} />
+                        ⭐ ML Recommended
+                    </div>
+                )}
+
+                {/* Row 1: Name + status badges */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                        <h4 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.25rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lot.name}</h4>
-                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', gap: '0.75rem' }}>
+                        <h4 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.2rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {lot.name}
+                        </h4>
+                        <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', gap: '0.6rem' }}>
                             {lot.distance && (
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                                     <Navigation size={11} /> {lot.distance.toFixed(1)} km
@@ -226,36 +273,84 @@ const FindParking = () => {
                             )}
                         </p>
                     </div>
-                    <span className={`badge ${status.class}`} style={{ fontSize: '0.7rem', flexShrink: 0, marginLeft: '0.5rem' }}>
-                        {status.text}
-                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem', flexShrink: 0, marginLeft: '0.5rem' }}>
+                        <span className={`badge ${status.class}`} style={{ fontSize: '0.68rem' }}>
+                            {status.text}
+                        </span>
+                        {mlReady && (
+                            <MLPredictionBadge
+                                demandScore={demandScore}
+                                confidenceLevel={confidence}
+                                fillingFastAlert={lot.fillingFastAlert}
+                                compact
+                            />
+                        )}
+                    </div>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', marginBottom: '0.5rem' }}>
+                {/* Row 2: Slots + rating + price */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', marginBottom: '0.4rem' }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--text-secondary)' }}>
-                        <Car size={13} /> {available}/{lot.totalCapacity}
+                        <Car size={12} /> {available}/{lot.totalCapacity}
                     </span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', color: '#facc15', fontSize: '0.8rem' }}>
-                        <Star size={12} style={{ fill: 'currentColor' }} />
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', color: '#facc15', fontSize: '0.78rem' }}>
+                        <Star size={11} style={{ fill: 'currentColor' }} />
                         {lot.rating > 0 ? lot.rating.toFixed(1) : 'New'}
                     </span>
-                    <span style={{ fontWeight: 600, color: 'var(--accent-secondary)', fontSize: '0.9rem' }}>
+                    <span style={{ fontWeight: 600, color: 'var(--accent-secondary)', fontSize: '0.88rem' }}>
                         ₹{Number(lot.baseRate).toFixed(0)}/hr
                     </span>
                 </div>
 
-                {/* Occupancy bar */}
-                <div className="progress-bar" style={{ height: '4px', marginBottom: '0.75rem' }}>
+                {/* Current occupancy bar */}
+                <div className="progress-bar" style={{ height: '4px', marginBottom: '0.5rem' }}>
                     <div
                         className={`progress-fill ${occupancyPercent < 50 ? 'success' : occupancyPercent < 80 ? 'warning' : 'danger'}`}
                         style={{ width: `${occupancyPercent}%` }}
-                    ></div>
+                    />
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                {/* ML prediction row */}
+                {mlReady && (
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        fontSize: '0.72rem',
+                        color: 'var(--text-muted)',
+                        marginBottom: '0.5rem',
+                        padding: '0.3rem 0.5rem',
+                        borderRadius: '6px',
+                        background: 'rgba(255,255,255,0.03)',
+                    }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                            <TrendingUp size={11} style={{ color: '#a5b4fc' }} />
+                            In 15 min:&nbsp;
+                            <strong style={{ color: predAvail <= 3 ? '#ef4444' : predAvail <= 10 ? '#f59e0b' : '#10b981' }}>
+                                ~{predAvail} slots
+                            </strong>
+                        </span>
+                        {confidence != null && (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                Confidence:&nbsp;
+                                <strong style={{ color: confidence >= 80 ? '#10b981' : confidence >= 60 ? '#f59e0b' : '#ef4444' }}>
+                                    {confidence}%
+                                </strong>
+                            </span>
+                        )}
+                        {lot.recommendationScore != null && sortMode === "recommendation" && (
+                            <span title="ML recommendation score">
+                                Score: <strong style={{ color: '#a5b4fc' }}>{lot.recommendationScore.toFixed(0)}</strong>
+                            </span>
+                        )}
+                    </div>
+                )}
+
+                {/* Action buttons */}
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: isExpanded ? '0.5rem' : 0 }}>
                     <button
                         className="btn btn-primary btn-sm"
-                        style={{ flex: 1, fontSize: '0.8rem', padding: '0.5rem' }}
+                        style={{ flex: 1, fontSize: '0.8rem', padding: '0.45rem' }}
                         onClick={(e) => handleBookNow(e, lot)}
                         disabled={available === 0}
                     >
@@ -263,7 +358,7 @@ const FindParking = () => {
                     </button>
                     <button
                         className="btn btn-secondary btn-sm btn-icon"
-                        style={{ padding: '0.5rem' }}
+                        style={{ padding: '0.45rem' }}
                         onClick={(e) => {
                             e.stopPropagation();
                             navigate(`/navigation?lat=${lot.latitude}&lon=${lot.longitude}&name=${encodeURIComponent(lot.name)}`);
@@ -272,7 +367,25 @@ const FindParking = () => {
                     >
                         <Navigation size={14} />
                     </button>
+                    <button
+                        className="btn btn-secondary btn-sm btn-icon"
+                        style={{ padding: '0.45rem', fontSize: '0.75rem' }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedCardId(prev => prev === lot.id ? null : lot.id);
+                        }}
+                        title="Best time to park"
+                    >
+                        <Clock size={14} />
+                    </button>
                 </div>
+
+                {/* Best Time panel (lazy) */}
+                {isExpanded && (
+                    <div onClick={e => e.stopPropagation()}>
+                        <BestTimeSuggestion lotId={lot.id} lotName={lot.name} />
+                    </div>
+                )}
             </div>
         );
     };
@@ -285,34 +398,27 @@ const FindParking = () => {
             overflow: 'hidden',
             margin: '-1.5rem',
         }}>
-            {/* Full-screen Map Background */}
+            {/* Full-screen Map */}
             <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
                 <ParkingMap
                     parkingLots={sortedLots}
                     userLocation={userLocation}
                     selectedLot={selectedLot}
                     onSelectLot={setSelectedLot}
-                    onBookLot={(lot) => handleBookNow({ stopPropagation: () => { } }, lot)}
+                    onBookLot={(lot) => handleBookNow({ stopPropagation: () => {} }, lot)}
                     routeCoordinates={routeCoordinates}
                 />
             </div>
 
-            {/* Search Bar - overlayed on top of map */}
+            {/* Search Bar */}
             <div style={{
-                position: 'absolute',
-                top: '1rem',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                zIndex: 10,
-                width: '90%',
-                maxWidth: '600px',
+                position: 'absolute', top: '1rem', left: '50%',
+                transform: 'translateX(-50%)', zIndex: 10,
+                width: '90%', maxWidth: '600px',
             }}>
                 <div className="glass-panel" style={{
-                    padding: '0.75rem',
-                    display: 'flex',
-                    gap: '0.5rem',
-                    alignItems: 'center',
-                    background: 'rgba(17, 24, 39, 0.92)',
+                    padding: '0.75rem', display: 'flex', gap: '0.5rem',
+                    alignItems: 'center', background: 'rgba(17,24,39,0.92)',
                     backdropFilter: 'blur(20px)',
                 }}>
                     <div style={{ position: 'relative', flex: 1 }}>
@@ -326,57 +432,77 @@ const FindParking = () => {
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    <button
-                        className="btn btn-primary btn-sm"
-                        onClick={handleFindNearest}
-                        disabled={isLocating}
-                        style={{ whiteSpace: 'nowrap', fontSize: '0.8rem', padding: '0.6rem 0.75rem' }}
-                    >
+                    <button className="btn btn-primary btn-sm" onClick={handleFindNearest} disabled={isLocating}
+                        style={{ whiteSpace: 'nowrap', fontSize: '0.8rem', padding: '0.6rem 0.75rem' }}>
                         {isLocating ? <Loader2 size={16} className="animate-spin" /> : <Navigation size={16} />}
                         <span className="hidden-mobile" style={{ marginLeft: '0.25rem' }}>Nearest</span>
                     </button>
-                    <button
-                        className="btn btn-secondary btn-icon btn-sm"
-                        onClick={handleRefresh}
-                        title="Refresh"
-                        style={{ padding: '0.6rem' }}
-                    >
+                    <button className="btn btn-secondary btn-icon btn-sm" onClick={handleRefresh}
+                        title="Refresh" style={{ padding: '0.6rem' }}>
                         <RefreshCw size={16} />
                     </button>
                 </div>
             </div>
 
-            {/* Desktop: Left Side Panel */}
+            {/* Desktop Left Panel */}
             <div className="parking-side-panel" style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                bottom: 0,
-                width: '380px',
-                zIndex: 5,
-                display: 'flex',
-                flexDirection: 'column',
-                background: 'rgba(10, 15, 26, 0.95)',
-                backdropFilter: 'blur(20px)',
-                borderRight: '1px solid var(--glass-border)',
-                overflowY: 'hidden',
+                position: 'absolute', top: 0, left: 0, bottom: 0, width: '390px',
+                zIndex: 5, display: 'flex', flexDirection: 'column',
+                background: 'rgba(10,15,26,0.95)', backdropFilter: 'blur(20px)',
+                borderRight: '1px solid var(--glass-border)', overflowY: 'hidden',
             }}>
                 {/* Panel Header */}
                 <div style={{
-                    padding: '1rem',
-                    borderBottom: '1px solid var(--glass-border)',
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '0.875rem 1rem', borderBottom: '1px solid var(--glass-border)',
                     flexShrink: 0,
-                    marginTop: 0,
                 }}>
-                    <h3 style={{ fontWeight: 600, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
-                        <MapPin size={18} style={{ color: 'var(--accent-secondary)' }} />
-                        {loading ? 'Loading...' : `${sortedLots.length} Parking Spots`}
-                    </h3>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                        {lastUpdated.toLocaleTimeString()}
-                    </span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <h3 style={{ fontWeight: 600, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+                            <MapPin size={18} style={{ color: 'var(--accent-secondary)' }} />
+                            {loading ? 'Loading...' : `${sortedLots.length} Parking Spots`}
+                            {mlLoading && <Loader2 size={13} style={{ color: 'var(--text-muted)', animation: 'spin 1s linear infinite' }} />}
+                        </h3>
+                        <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                            {lastUpdated.toLocaleTimeString()}
+                        </span>
+                    </div>
+
+                    {/* Sort toggle */}
+                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                        <button
+                            className={`btn btn-sm ${sortMode === 'recommendation' ? 'btn-primary' : 'btn-secondary'}`}
+                            style={{ flex: 1, fontSize: '0.72rem', padding: '0.35rem 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}
+                            onClick={() => setSortMode('recommendation')}
+                        >
+                            <Zap size={11} /> ML Recommended
+                        </button>
+                        <button
+                            className={`btn btn-sm ${sortMode === 'distance' ? 'btn-primary' : 'btn-secondary'}`}
+                            style={{ flex: 1, fontSize: '0.72rem', padding: '0.35rem 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}
+                            onClick={() => setSortMode('distance')}
+                        >
+                            <Navigation size={11} /> Distance
+                        </button>
+                    </div>
                 </div>
+
+                {/* Filling-fast alert banner */}
+                {nearbyFillingFast.length > 0 && (
+                    <div style={{
+                        padding: '0.5rem 1rem',
+                        background: 'rgba(239,68,68,0.1)',
+                        borderBottom: '1px solid rgba(239,68,68,0.25)',
+                        display: 'flex', alignItems: 'center', gap: '0.5rem',
+                        fontSize: '0.75rem', color: '#fca5a5',
+                        flexShrink: 0,
+                    }}>
+                        <Zap size={13} style={{ color: '#ef4444', flexShrink: 0 }} />
+                        <span>
+                            <strong>{nearbyFillingFast.length} nearby {nearbyFillingFast.length === 1 ? 'lot' : 'lots'}</strong>
+                            {' '}filling fast — showing alternatives first
+                        </span>
+                    </div>
+                )}
 
                 {/* Scrollable List */}
                 <div ref={listRef} style={{ flex: 1, overflowY: 'auto' }} className="custom-scrollbar">
@@ -384,9 +510,9 @@ const FindParking = () => {
                         <div style={{ padding: '1rem' }}>
                             {[1, 2, 3, 4].map(i => (
                                 <div key={i} style={{ padding: '1rem', borderBottom: '1px solid var(--glass-border)' }}>
-                                    <div className="skeleton skeleton-title"></div>
-                                    <div className="skeleton skeleton-text" style={{ width: '75%' }}></div>
-                                    <div className="skeleton skeleton-text" style={{ width: '50%' }}></div>
+                                    <div className="skeleton skeleton-title" />
+                                    <div className="skeleton skeleton-text" style={{ width: '75%' }} />
+                                    <div className="skeleton skeleton-text" style={{ width: '50%' }} />
                                 </div>
                             ))}
                         </div>
@@ -396,8 +522,12 @@ const FindParking = () => {
                             <p>No parking spots found</p>
                         </div>
                     ) : (
-                        currentLots.map((lot, index) => (
-                            <ParkingCard key={lot.id} lot={lot} index={index} />
+                        currentLots.map((lot) => (
+                            <ParkingCard
+                                key={lot.id}
+                                lot={lot}
+                                isTop={sortMode === 'recommendation' && lot.id === topLotId}
+                            />
                         ))
                     )}
                 </div>
@@ -405,61 +535,37 @@ const FindParking = () => {
                 {/* Pagination */}
                 {totalPages > 1 && (
                     <div style={{
-                        padding: '0.75rem 1rem',
-                        borderTop: '1px solid var(--glass-border)',
+                        padding: '0.75rem 1rem', borderTop: '1px solid var(--glass-border)',
                         display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem',
-                        flexShrink: 0,
-                        background: 'rgba(10, 15, 26, 0.95)',
+                        flexShrink: 0, background: 'rgba(10,15,26,0.95)',
                     }}>
-                        <button
-                            className="btn btn-secondary btn-sm"
-                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                            disabled={currentPage === 1}
-                            style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }}
-                        >
+                        <button className="btn btn-secondary btn-sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1} style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }}>
                             Prev
                         </button>
                         <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                             {currentPage} / {totalPages}
                         </span>
-                        <button
-                            className="btn btn-secondary btn-sm"
-                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                            disabled={currentPage === totalPages}
-                            style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }}
-                        >
+                        <button className="btn btn-secondary btn-sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            disabled={currentPage === totalPages} style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }}>
                             Next
                         </button>
                     </div>
                 )}
             </div>
 
-            {/* Mobile: Bottom Sheet Panel */}
+            {/* Mobile Bottom Sheet */}
             <div className="parking-bottom-panel" style={{
-                position: 'absolute',
-                left: 0,
-                right: 0,
-                bottom: 0,
-                zIndex: 5,
-                display: 'none', /* shown via CSS @media */
-                flexDirection: 'column',
-                background: 'rgba(10, 15, 26, 0.95)',
-                backdropFilter: 'blur(20px)',
+                position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 5,
+                display: 'none', flexDirection: 'column',
+                background: 'rgba(10,15,26,0.95)', backdropFilter: 'blur(20px)',
                 borderTop: '1px solid var(--glass-border)',
                 borderRadius: '1rem 1rem 0 0',
                 maxHeight: panelExpanded ? '60vh' : '3.5rem',
-                transition: 'max-height 0.3s ease',
-                overflow: 'hidden',
+                transition: 'max-height 0.3s ease', overflow: 'hidden',
             }}>
-                {/* Drag Handle / Toggle */}
-                <div
-                    onClick={() => setPanelExpanded(!panelExpanded)}
-                    style={{
-                        padding: '0.75rem 1rem',
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        cursor: 'pointer', flexShrink: 0,
-                    }}
-                >
+                <div onClick={() => setPanelExpanded(!panelExpanded)}
+                    style={{ padding: '0.75rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', flexShrink: 0 }}>
                     <h3 style={{ fontWeight: 600, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
                         <MapPin size={16} style={{ color: 'var(--accent-secondary)' }} />
                         {loading ? 'Loading...' : `${sortedLots.length} Spots`}
@@ -467,30 +573,41 @@ const FindParking = () => {
                     {panelExpanded ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
                 </div>
 
-                {/* Mobile Scrollable List */}
                 {panelExpanded && (
                     <div style={{ flex: 1, overflowY: 'auto' }} className="custom-scrollbar">
+                        {/* Filling-fast alert mobile */}
+                        {nearbyFillingFast.length > 0 && (
+                            <div style={{
+                                padding: '0.4rem 1rem', background: 'rgba(239,68,68,0.1)',
+                                borderBottom: '1px solid rgba(239,68,68,0.22)',
+                                fontSize: '0.72rem', color: '#fca5a5',
+                                display: 'flex', alignItems: 'center', gap: '0.4rem',
+                            }}>
+                                <Zap size={12} style={{ color: '#ef4444' }} />
+                                {nearbyFillingFast.length} nearby {nearbyFillingFast.length === 1 ? 'lot' : 'lots'} filling fast
+                            </div>
+                        )}
                         {loading ? (
                             <div style={{ padding: '1rem' }}>
                                 {[1, 2, 3].map(i => (
                                     <div key={i} style={{ padding: '1rem', borderBottom: '1px solid var(--glass-border)' }}>
-                                        <div className="skeleton skeleton-title"></div>
-                                        <div className="skeleton skeleton-text" style={{ width: '60%' }}></div>
+                                        <div className="skeleton skeleton-title" />
+                                        <div className="skeleton skeleton-text" style={{ width: '60%' }} />
                                     </div>
                                 ))}
                             </div>
                         ) : (
-                            currentLots.map((lot, index) => (
-                                <ParkingCard key={lot.id} lot={lot} index={index} />
+                            currentLots.map((lot) => (
+                                <ParkingCard
+                                    key={lot.id}
+                                    lot={lot}
+                                    isTop={sortMode === 'recommendation' && lot.id === topLotId}
+                                />
                             ))
                         )}
 
-                        {/* Mobile Pagination */}
                         {totalPages > 1 && (
-                            <div style={{
-                                padding: '0.75rem', display: 'flex', justifyContent: 'center',
-                                alignItems: 'center', gap: '1rem',
-                            }}>
+                            <div style={{ padding: '0.75rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem' }}>
                                 <button className="btn btn-secondary btn-sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} style={{ fontSize: '0.8rem' }}>Prev</button>
                                 <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{currentPage}/{totalPages}</span>
                                 <button className="btn btn-secondary btn-sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} style={{ fontSize: '0.8rem' }}>Next</button>
@@ -500,8 +617,8 @@ const FindParking = () => {
                 )}
             </div>
 
-            {/* Responsive CSS - inline style tag */}
             <style>{`
+                @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
                 @media (max-width: 768px) {
                     .parking-side-panel { display: none !important; }
                     .parking-bottom-panel { display: flex !important; }
