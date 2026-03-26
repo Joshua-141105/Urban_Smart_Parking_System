@@ -212,6 +212,14 @@ public class PricingEngineService {
     }
 
     public PriceBreakdown getPriceBreakdown(ParkingLot lot, User user, LocalDateTime start, LocalDateTime end) {
+        // Monthly permit holders get free parking
+        if (user != null && hasMonthlyPermit(user, lot)) {
+            long minutes = Duration.between(start, end).toMinutes();
+            double hours = Math.ceil(minutes / 60.0);
+            if (hours < 1.0) hours = 1.0;
+            return new PriceBreakdown(lot.getBaseRate(), 0, 0, 0, 0, hours, 0, 0);
+        }
+
         double baseRate = lot.getBaseRate();
         double occupancyMultiplier = calculateOccupancyMultiplier(lot);
         double timeMultiplier = calculateTimeMultiplier(start);

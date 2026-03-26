@@ -4,5 +4,6 @@ public enum PaymentMethod {
     CARD,
     UPI,
     WALLET,
-    SUBSCRIPTION
+    SUBSCRIPTION,
+    PERMIT
 }

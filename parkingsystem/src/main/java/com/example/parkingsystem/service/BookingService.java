@@ -196,7 +196,7 @@ public class BookingService {
 
     @Transactional(rollbackFor = Exception.class)
     public Booking createBookingWithPayment(Long userId, Long spaceId, Long lotId,
-            String vehicleNumber, LocalDateTime startTime, LocalDateTime endTime, Double totalAmount) {
+            String vehicleNumber, LocalDateTime startTime, LocalDateTime endTime, Double totalAmount, String paymentMethodStr) {
 
         LockInfo lock = spaceLocks.get(spaceId);
         if (lock == null || !lock.userId.equals(userId)) {
@@ -217,6 +217,16 @@ public class BookingService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        // Determine payment method (default to CARD for backward compatibility)
+        PaymentMethod paymentMethod = PaymentMethod.CARD;
+        if (paymentMethodStr != null) {
+            try {
+                paymentMethod = PaymentMethod.valueOf(paymentMethodStr.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("Unknown payment method '{}', defaulting to CARD", paymentMethodStr);
+            }
+        }
+
         Booking booking = Booking.builder()
                 .user(user)
                 .parkingSpace(space)
@@ -225,6 +235,7 @@ public class BookingService {
                 .status(BookingStatus.ACTIVE)
                 .totalAmount(totalAmount)
                 .vehicleNumber(vehicleNumber)
+                .paymentMethod(paymentMethod)
                 .build();
 
         booking = bookingRepository.save(booking);

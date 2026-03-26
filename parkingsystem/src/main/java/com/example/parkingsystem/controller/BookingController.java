@@ -159,8 +159,12 @@ public class BookingController {
                 endTime = startTime.plusHours(durationHours);
             }
 
+            String paymentMethod = request.get("paymentMethod") != null
+                    ? request.get("paymentMethod").toString()
+                    : null;
+
             Booking booking = bookingService.createBookingWithPayment(
-                    userDetails.getId(), spaceId, lotId, vehicleNumber, startTime, endTime, totalAmount);
+                    userDetails.getId(), spaceId, lotId, vehicleNumber, startTime, endTime, totalAmount, paymentMethod);
 
             return ResponseEntity.ok(java.util.Map.of(
                     "success", true,

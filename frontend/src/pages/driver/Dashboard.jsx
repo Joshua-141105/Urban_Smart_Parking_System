@@ -108,185 +108,303 @@ const Dashboard = () => {
     }, [user]);
 
     const getStatusBadge = (status) => {
-        switch (status) {
-            case 'ACTIVE':
-                return <span className="badge badge-success">Active</span>;
-            case 'COMPLETED':
-                return <span className="badge badge-neutral">Completed</span>;
-            case 'CANCELLED':
-                return <span className="badge badge-danger">Cancelled</span>;
-            default:
-                return <span className="badge badge-neutral">{status}</span>;
-        }
+        const statusConfig = {
+            ACTIVE: { color: '#10b981', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.25)', label: 'Active' },
+            COMPLETED: { color: '#94a3b8', bg: 'rgba(148,163,184,0.12)', border: 'rgba(148,163,184,0.25)', label: 'Completed' },
+            CANCELLED: { color: '#ef4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.25)', label: 'Cancelled' },
+        };
+        const cfg = statusConfig[status] || { color: '#94a3b8', bg: 'rgba(148,163,184,0.12)', border: 'rgba(148,163,184,0.25)', label: status };
+        return (
+            <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
+                padding: '0.2rem 0.6rem', borderRadius: '999px',
+                background: cfg.bg, border: `1px solid ${cfg.border}`,
+                color: cfg.color, fontSize: '0.72rem', fontWeight: 600,
+            }}>
+                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: cfg.color }} />
+                {cfg.label}
+            </span>
+        );
     };
+
+    const quickStats = [
+        {
+            title: "Active Bookings",
+            value: stats.activeBookings,
+            icon: <Car size={20} />,
+            color: "rgba(16,185,129,0.15)",
+            textColor: "#6ee7b7",
+            iconColor: "#10b981",
+            trend: "Right now",
+        },
+        {
+            title: "Total Bookings",
+            value: stats.totalBookings,
+            icon: <History size={20} />,
+            color: "rgba(99,102,241,0.15)",
+            textColor: "#a5b4fc",
+            iconColor: "#6366f1",
+            trend: "All time",
+        },
+        {
+            title: "Total Spent",
+            value: `₹${stats.totalSpent.toLocaleString()}`,
+            icon: <CreditCard size={20} />,
+            color: "rgba(168,85,247,0.15)",
+            textColor: "#c084fc",
+            iconColor: "#a855f7",
+            trend: "Lifetime",
+        },
+        {
+            title: "Time Saved",
+            value: `${stats.savedTime} min`,
+            icon: <Clock size={20} />,
+            color: "rgba(6,182,212,0.15)",
+            textColor: "#67e8f9",
+            iconColor: "#06b6d4",
+            trend: "This month",
+        },
+    ];
 
     const quickActions = [
         {
             title: "Find Parking",
             description: "Search for nearby parking spots",
-            icon: <MapPin size={24} />,
+            icon: <MapPin size={19} />,
             link: "/find-parking",
-            color: "from-indigo-500 to-purple-600"
+            gradient: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
         },
         {
             title: "My Bookings",
             description: "View and manage your bookings",
-            icon: <History size={24} />,
+            icon: <History size={19} />,
             link: "/bookings",
-            color: "from-emerald-500 to-teal-600"
+            gradient: 'linear-gradient(135deg, #10b981, #06b6d4)',
         },
         {
             title: "Permits",
             description: "Monthly parking passes",
-            icon: <FileText size={24} />,
+            icon: <FileText size={19} />,
             link: "/permits",
-            color: "from-orange-500 to-red-600"
+            gradient: 'linear-gradient(135deg, #f59e0b, #f97316)',
         }
     ];
 
     return (
-        <div className="page-container">
+        <div className="animate-fade-in" style={{ maxWidth: '1200px', margin: '0 auto' }}>
             {/* Header */}
-            <div className="page-header">
-                <h1 className="page-title">
+            <div style={{ marginBottom: '2rem' }}>
+                <h1 style={{
+                    fontSize: 'clamp(1.625rem, 3vw, 2rem)', fontWeight: 800,
+                    letterSpacing: '-0.025em', marginBottom: '0.375rem',
+                }}>
                     Welcome back, <span className="gradient-text">{user?.username}</span>!
                 </h1>
-                <p className="page-subtitle">Here's what's happening with your parking today.</p>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                    Here's what's happening with your parking today.
+                </p>
             </div>
 
             {/* Stats Grid */}
-            <div className="stats-flex-container">
-                <div className="stat-card">
-                    <div className="flex items-start justify-between">
-                        <div>
-                            <p className="stat-label mb-2">Active Bookings</p>
-                            <p className="stat-value text-emerald-400">{stats.activeBookings}</p>
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '1rem', marginBottom: '1.5rem',
+            }}>
+                {quickStats.map((stat, index) => (
+                    <div key={index} style={{
+                        padding: '1.375rem',
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px solid rgba(255,255,255,0.07)',
+                        borderRadius: '14px',
+                        position: 'relative', overflow: 'hidden',
+                        transition: 'border-color 0.2s, transform 0.2s',
+                    }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.13)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '0.875rem' }}>
+                            <div>
+                                <p style={{ fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                                    {stat.title}
+                                </p>
+                                <p style={{ fontSize: '1.75rem', fontWeight: 800, lineHeight: 1, color: stat.textColor }}>
+                                    {stat.value}
+                                </p>
+                            </div>
+                            <div style={{
+                                width: '42px', height: '42px', borderRadius: '11px', flexShrink: 0,
+                                background: stat.color, color: stat.iconColor,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                                {stat.icon}
+                            </div>
                         </div>
-                        <div className="stat-icon bg-emerald-500/10 text-emerald-500">
-                            <Car size={22} />
-                        </div>
-                    </div>
-                </div>
-
-                <div className="stat-card">
-                    <div className="flex items-start justify-between">
-                        <div>
-                            <p className="stat-label mb-2">Total Bookings</p>
-                            <p className="stat-value">{stats.totalBookings}</p>
-                        </div>
-                        <div className="stat-icon bg-indigo-500/10 text-indigo-500">
-                            <History size={22} />
-                        </div>
-                    </div>
-                </div>
-
-                <div className="stat-card">
-                    <div className="flex items-start justify-between">
-                        <div>
-                            <p className="stat-label mb-2">Total Spent</p>
-                            <p className="stat-value text-purple-400">₹{stats.totalSpent.toLocaleString()}</p>
-                        </div>
-                        <div className="stat-icon bg-purple-500/10 text-purple-500">
-                            <CreditCard size={22} />
-                        </div>
-                    </div>
-                </div>
-
-                <div className="stat-card">
-                    <div className="flex items-start justify-between">
-                        <div>
-                            <p className="stat-label mb-2">Time Saved</p>
-                            <p className="stat-value text-cyan-400">{stats.savedTime}<span className="text-lg"> min</span></p>
-                            <p className="text-xs text-secondary mt-1">This month</p>
-                        </div>
-                        <div className="stat-icon bg-cyan-500/10 text-cyan-500">
-                            <Clock size={22} />
+                        <div style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+                            fontSize: '0.75rem', fontWeight: 600,
+                            color: stat.iconColor, background: stat.color,
+                            padding: '0.2rem 0.5rem', borderRadius: '6px',
+                        }}>
+                            <TrendingUp size={11} /> {stat.trend}
                         </div>
                     </div>
-                </div>
+                ))}
             </div>
 
             {/* Quick Actions */}
-            <div className="mb-8">
-                <h2 className="section-title mb-4">Quick Actions</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div style={{
+                padding: '1.5rem',
+                background: 'rgba(255,255,255,0.02)',
+                border: '1px solid rgba(255,255,255,0.07)',
+                borderRadius: '16px',
+                marginBottom: '1.5rem',
+            }}>
+                <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1.25rem', color: '#f1f5f9' }}>
+                    Quick Actions
+                </h2>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.875rem' }}>
                     {quickActions.map((action, index) => (
-                        <Link
-                            key={index}
-                            to={action.link}
-                            className="glass-card p-5 flex items-center gap-4 group hover:border-white/20"
+                        <Link key={index} to={action.link} style={{
+                            padding: '1.125rem',
+                            background: 'rgba(255,255,255,0.03)',
+                            border: '1px solid rgba(255,255,255,0.07)',
+                            borderRadius: '12px',
+                            textDecoration: 'none',
+                            display: 'flex', flexDirection: 'column', gap: '0.875rem',
+                            transition: 'border-color 0.2s, transform 0.2s, background 0.2s',
+                        }}
+                            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.13)'; e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
                         >
-                            <div className={`w-12 h-12 rounded-xl flex-center text-white shrink-0 bg-gradient-to-br ${action.color}`}>
-                                {action.icon}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <div style={{
+                                    width: '40px', height: '40px', borderRadius: '10px', flexShrink: 0,
+                                    background: action.gradient,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    color: '#fff', boxShadow: '0 3px 10px rgba(0,0,0,0.2)',
+                                }}>
+                                    {action.icon}
+                                </div>
+                                <ArrowRight size={14} style={{ color: 'var(--text-muted)', marginTop: '2px' }} />
                             </div>
-                            <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold group-hover:text-accent-secondary transition-colors">{action.title}</h3>
-                                <p className="text-sm text-secondary truncate">{action.description}</p>
+                            <div>
+                                <p style={{ fontWeight: 600, fontSize: '0.875rem', color: '#f1f5f9', marginBottom: '0.25rem' }}>{action.title}</p>
+                                <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.4, margin: 0 }}>{action.description}</p>
                             </div>
-                            <ArrowRight size={18} className="text-muted group-hover:text-accent-secondary group-hover:translate-x-1 transition-all shrink-0" />
                         </Link>
                     ))}
                 </div>
             </div>
 
             {/* Recent Bookings */}
-            <div className="glass-panel p-6">
-                <div className="section-header">
-                    <h2 className="section-title">Recent Bookings</h2>
-                    <Link to="/bookings" className="text-accent-secondary text-sm hover:underline flex items-center gap-1">
+            <div style={{
+                padding: '1.5rem',
+                background: 'rgba(255,255,255,0.02)',
+                border: '1px solid rgba(255,255,255,0.07)',
+                borderRadius: '16px',
+            }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <History size={16} style={{ color: '#6366f1' }} />
+                        <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#f1f5f9' }}>Recent Bookings</h2>
+                    </div>
+                    <Link to="/bookings" style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
+                        fontSize: '0.8rem', fontWeight: 600, color: '#a5b4fc',
+                        textDecoration: 'none', transition: 'color 0.2s',
+                    }}>
                         View All <ArrowRight size={14} />
                     </Link>
                 </div>
 
                 {loading ? (
-                    <div className="space-y-4">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                         {[1, 2].map(i => (
-                            <div key={i} className="glass-card-static p-4">
-                                <div className="skeleton skeleton-title"></div>
-                                <div className="skeleton skeleton-text w-3/4"></div>
+                            <div key={i} style={{
+                                padding: '1.125rem',
+                                background: 'rgba(255,255,255,0.03)',
+                                border: '1px solid rgba(255,255,255,0.07)',
+                                borderRadius: '12px',
+                            }}>
+                                <div style={{ height: '1rem', width: '50%', background: 'rgba(255,255,255,0.06)', borderRadius: '6px', marginBottom: '0.625rem' }} />
+                                <div style={{ height: '0.75rem', width: '75%', background: 'rgba(255,255,255,0.04)', borderRadius: '6px' }} />
                             </div>
                         ))}
                     </div>
                 ) : recentBookings.length === 0 ? (
-                    <div className="text-center py-8">
-                        <Car size={48} className="mx-auto mb-4 text-muted" />
-                        <p className="text-secondary">No bookings yet</p>
-                        <Link to="/find-parking" className="btn btn-primary mt-4">
-                            Find Parking
+                    <div style={{ textAlign: 'center', padding: '2.5rem 1rem' }}>
+                        <Car size={48} style={{ color: 'var(--text-muted)', marginBottom: '1rem' }} />
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>No bookings yet</p>
+                        <Link to="/find-parking" style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                            padding: '0.6rem 1.25rem', borderRadius: '10px',
+                            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                            color: '#fff', fontWeight: 600, fontSize: '0.875rem',
+                            textDecoration: 'none', transition: 'transform 0.2s, box-shadow 0.2s',
+                            boxShadow: '0 3px 12px rgba(99,102,241,0.3)',
+                        }}>
+                            <MapPin size={16} /> Find Parking
                         </Link>
                     </div>
                 ) : (
-                    <div className="space-y-4">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                         {recentBookings.map((booking) => (
-                            <div key={booking.id} className="glass-card-static p-4 flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-lg flex-center shrink-0" style={{ background: 'rgba(99, 102, 241, 0.15)' }}>
-                                    <Car size={24} className="text-accent" />
+                            <div key={booking.id} style={{
+                                padding: '1.125rem',
+                                background: 'rgba(255,255,255,0.03)',
+                                border: '1px solid rgba(255,255,255,0.07)',
+                                borderRadius: '12px',
+                                display: 'flex', alignItems: 'center', gap: '1rem',
+                                transition: 'border-color 0.2s, transform 0.2s',
+                            }}
+                                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.13)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                            >
+                                <div style={{
+                                    width: '44px', height: '44px', borderRadius: '11px', flexShrink: 0,
+                                    background: 'rgba(99,102,241,0.15)', color: '#6366f1',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                }}>
+                                    <Car size={22} />
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <h4 className="font-semibold truncate">{booking.parkingLotName}</h4>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.375rem' }}>
+                                        <h4 style={{ fontWeight: 600, fontSize: '0.9rem', color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: 0 }}>
+                                            {booking.parkingLotName}
+                                        </h4>
                                         {getStatusBadge(booking.status)}
                                     </div>
-                                    <p className="text-sm text-secondary flex items-center gap-3">
-                                        <span className="flex items-center gap-1">
-                                            <Calendar size={12} />
-                                            {booking.date}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', flexWrap: 'wrap' }}>
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                                            <Calendar size={12} /> {booking.date}
                                         </span>
-                                        <span className="flex items-center gap-1">
-                                            <Clock size={12} />
-                                            {booking.time}
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                                            <Clock size={12} /> {booking.time}
                                         </span>
-                                        <span>{booking.duration}</span>
-                                    </p>
+                                        <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                                            {booking.duration}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="text-right shrink-0">
-                                    <p className="text-lg font-bold">₹{booking.amount}</p>
+                                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                    <p style={{ fontSize: '1.125rem', fontWeight: 800, color: '#c084fc', margin: 0 }}>₹{booking.amount}</p>
                                     {booking.status === 'ACTIVE' && (
                                         <button
-                                            className="btn btn-primary btn-sm mt-1"
+                                            style={{
+                                                display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
+                                                marginTop: '0.5rem', padding: '0.35rem 0.75rem',
+                                                borderRadius: '8px', border: 'none', cursor: 'pointer',
+                                                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                                color: '#fff', fontSize: '0.75rem', fontWeight: 600,
+                                                transition: 'transform 0.2s, box-shadow 0.2s',
+                                                boxShadow: '0 2px 8px rgba(99,102,241,0.3)',
+                                            }}
+                                            onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.05)'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
                                             onClick={() => navigate(`/navigation?lat=${booking.latitude}&lon=${booking.longitude}&name=${encodeURIComponent(booking.parkingLotName)}`)}
                                         >
-                                            <Navigation size={14} />
+                                            <Navigation size={12} />
                                             Navigate
                                         </button>
                                     )}
@@ -296,6 +414,15 @@ const Dashboard = () => {
                     </div>
                 )}
             </div>
+
+            <style>{`
+                @media (max-width: 640px) {
+                    .driver-stats-grid { grid-template-columns: 1fr 1fr !important; }
+                }
+                @media (max-width: 400px) {
+                    .driver-stats-grid { grid-template-columns: 1fr !important; }
+                }
+            `}</style>
         </div>
     );
 };

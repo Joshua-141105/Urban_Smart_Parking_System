@@ -6,7 +6,7 @@ import api from "../../api/axios";
 import {
     MapPin, Clock, Car, IndianRupee, CreditCard, Lock, Unlock,
     AlertCircle, CheckCircle, ArrowLeft, Timer, Shield, Calendar, RefreshCw,
-    Zap, CalendarClock, Info
+    Zap, CalendarClock, Info, ShieldCheck
 } from "lucide-react";
 
 // Helper functions for time management
@@ -60,6 +60,8 @@ const BookingPayment = () => {
     const [success, setSuccess] = useState(false);
     const [availabilityError, setAvailabilityError] = useState(false);
     const [revalidating, setRevalidating] = useState(false);
+    const [hasPermit, setHasPermit] = useState(false);
+    const [permitExpiry, setPermitExpiry] = useState(null);
 
     // Debounce ref for API calls
     const debounceRef = useRef(null);
@@ -95,6 +97,28 @@ const BookingPayment = () => {
             navigate("/login", { state: { from: `/booking/${lotId}` } });
         }
     }, [user, navigate, lotId]);
+
+    // Fetch user permits to check if this lot is covered
+    useEffect(() => {
+        const fetchPermits = async () => {
+            try {
+                const res = await api.get("/permits/my-permits");
+                const permits = res.data || [];
+                const activePermit = permits.find(
+                    p => p.parkingLot && String(p.parkingLot.id) === String(lotId) && p.active && new Date(p.endDate) > new Date()
+                );
+                if (activePermit) {
+                    setHasPermit(true);
+                    setPermitExpiry(new Date(activePermit.endDate).toLocaleDateString());
+                }
+            } catch (err) {
+                console.error("Failed to fetch permits", err);
+            }
+        };
+        if (user && lotId) {
+            fetchPermits();
+        }
+    }, [user, lotId]);
 
     // Time validation
     const validateTimeRange = useCallback(() => {
@@ -444,7 +468,7 @@ const BookingPayment = () => {
         
         setRevalidating(false);
         
-        const totalAmount = calculateTotal();
+        const totalAmount = hasPermit ? 0 : calculateTotal();
         
         const bookingMetadata = {
             userId: user.id,
@@ -453,10 +477,28 @@ const BookingPayment = () => {
             vehicleNumber: vehicleNumber.trim().toUpperCase(),
             startTime: toLocalDateTimeString(start),
             endTime: toLocalDateTimeString(end),
-            durationHours: durationHours, // Kept for backward compatibility
-            totalAmount: totalAmount
+            durationHours: durationHours,
+            totalAmount: totalAmount,
+            paymentMethod: hasPermit ? "PERMIT" : undefined
         };
 
+        // PERMIT FLOW: Skip payment, directly create booking
+        if (hasPermit) {
+            setProcessing(true);
+            try {
+                await api.post("/bookings/create", bookingMetadata);
+                setSuccess(true);
+                setTimeout(() => navigate("/bookings"), 2500);
+            } catch (err) {
+                console.error("Permit booking failed", err);
+                setError(err.response?.data?.message || "Booking failed. Please try again.");
+            } finally {
+                setProcessing(false);
+            }
+            return;
+        }
+
+        // NORMAL FLOW: Navigate to payment page
         navigate("/payment", {
             state: {
                 amount: totalAmount,
@@ -508,10 +550,13 @@ const BookingPayment = () => {
                     <CheckCircle size={64} className="text-emerald-500 mx-auto mb-4" />
                     <h2 className="text-2xl font-bold mb-2">Booking Confirmed!</h2>
                     <p className="text-secondary mb-4">
-                        Your parking spot has been reserved. Redirecting to your bookings...
+                        {hasPermit
+                            ? '🎉 Booked using Monthly Permit — No payment required!'
+                            : 'Your parking spot has been reserved. Redirecting to your bookings...'}
                     </p>
                     <div className="text-sm text-muted">
                         Space: {selectedSpace?.spaceNumber} | Duration: {getCurrentDuration()}hr
+                        {hasPermit && ' | Payment: FREE (Permit)'}
                     </div>
                 </div>
             </div>
@@ -935,11 +980,36 @@ const BookingPayment = () => {
                             />
                         </div>
 
+                        {/* Permit Banner */}
+                        {hasPermit && (
+                            <div className="flex items-center gap-3 p-4 rounded-xl mb-2" style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)' }}>
+                                <ShieldCheck size={22} style={{ color: '#10b981', flexShrink: 0 }} />
+                                <div style={{ flex: 1 }}>
+                                    <p style={{ fontSize: '0.9rem', fontWeight: 700, color: '#6ee7b7', marginBottom: '0.15rem' }}>
+                                        Monthly Permit Active
+                                    </p>
+                                    <p style={{ fontSize: '0.75rem', color: '#86efac', margin: 0 }}>
+                                        FREE parking — no payment required
+                                        {permitExpiry && <span> • Valid until {permitExpiry}</span>}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Price Breakdown */}
                         <div className="border-t border-white/10 pt-4 mt-4">
                             <div className="flex justify-between text-sm mb-2">
                                 <span className="text-secondary">Base Rate</span>
-                                <span>₹{Number(lot?.baseRate || 0).toFixed(2)}/hr</span>
+                                {hasPermit ? (
+                                    <span>
+                                        <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)', marginRight: '0.5rem' }}>
+                                            ₹{Number(lot?.baseRate || 0).toFixed(2)}/hr
+                                        </span>
+                                        <span style={{ color: '#10b981', fontWeight: 600 }}>FREE</span>
+                                    </span>
+                                ) : (
+                                    <span>₹{Number(lot?.baseRate || 0).toFixed(2)}/hr</span>
+                                )}
                             </div>
                             <div className="flex justify-between text-sm mb-2">
                                 <span className="text-secondary">Duration</span>
@@ -947,23 +1017,37 @@ const BookingPayment = () => {
                             </div>
                             <div className="flex justify-between text-lg font-bold mt-3 pt-3 border-t border-white/10">
                                 <span>Total</span>
-                                <span className="text-accent flex items-center gap-1">
-                                    <IndianRupee size={18} />
-                                    {calculateTotal().toFixed(2)}
-                                </span>
+                                {hasPermit ? (
+                                    <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                                        <ShieldCheck size={18} />
+                                        FREE
+                                        <span style={{ fontSize: '0.75rem', fontWeight: 400, color: '#86efac' }}>(Covered by Permit)</span>
+                                    </span>
+                                ) : (
+                                    <span className="text-accent flex items-center gap-1">
+                                        <IndianRupee size={18} />
+                                        {calculateTotal().toFixed(2)}
+                                    </span>
+                                )}
                             </div>
                         </div>
 
-                        {/* Pay Button */}
+                        {/* Pay / Confirm Button */}
                         <button
                             className="btn btn-primary w-full py-4 text-lg"
                             onClick={handlePayment}
                             disabled={!selectedSpace || !isSpaceLocked || processing || revalidating || !vehicleNumber.trim() || timeError}
+                            style={hasPermit ? { background: 'linear-gradient(135deg, #10b981, #059669)' } : {}}
                         >
                             {processing || revalidating ? (
                                 <>
                                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                                     {revalidating ? 'Verifying slot...' : 'Processing...'}
+                                </>
+                            ) : hasPermit ? (
+                                <>
+                                    <ShieldCheck size={20} />
+                                    Confirm Booking (Free)
                                 </>
                             ) : (
                                 <>
@@ -974,7 +1058,9 @@ const BookingPayment = () => {
                         </button>
 
                         <p className="text-xs text-center text-muted">
-                            🔒 Secure payment • Space reserved until payment completes
+                            {hasPermit
+                                ? '🎫 Covered by Monthly Permit • No payment needed'
+                                : '🔒 Secure payment • Space reserved until payment completes'}
                         </p>
                     </div>
                 </div>

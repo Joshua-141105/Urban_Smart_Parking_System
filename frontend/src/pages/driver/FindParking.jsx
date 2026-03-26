@@ -6,7 +6,7 @@ import BestTimeSuggestion from "../../components/BestTimeSuggestion";
 import useParkingPredictions from "../../hooks/useParkingPredictions";
 import {
     Search, Navigation, Loader2, MapPin, Car, Clock,
-    RefreshCw, Star, ChevronUp, ChevronDown, Zap, TrendingUp, Award,
+    RefreshCw, Star, ChevronUp, ChevronDown, Zap, TrendingUp, Award, ShieldCheck,
 } from "lucide-react";
 import api from "../../api/axios";
 import { useAuth } from "../../context/AuthContext";
@@ -25,6 +25,7 @@ const FindParking = () => {
     const [panelExpanded, setPanelExpanded] = useState(true);
     const [sortMode, setSortMode] = useState("recommendation"); // "recommendation" | "distance"
     const [expandedCardId, setExpandedCardId] = useState(null);
+    const [permitLotIds, setPermitLotIds] = useState(new Set());
 
     const { occupancyUpdates } = useWebSocket();
 
@@ -85,6 +86,26 @@ const FindParking = () => {
             fetchParkingLots();
         }
     }, [fetchParkingLots]);
+
+    // Fetch user permits to highlight free parking lots
+    useEffect(() => {
+        const fetchPermits = async () => {
+            try {
+                const res = await api.get("/permits/my-permits");
+                const permits = res.data || [];
+                const activeIds = new Set(
+                    permits
+                        .filter(p => p.active && new Date(p.endDate) > new Date())
+                        .map(p => p.parkingLot?.id)
+                        .filter(Boolean)
+                );
+                setPermitLotIds(activeIds);
+            } catch (err) {
+                // Silent fail — permits are an enhancement
+            }
+        };
+        if (user) fetchPermits();
+    }, [user]);
 
     // Real-time occupancy updates via WebSocket
     useEffect(() => {
@@ -178,10 +199,26 @@ const FindParking = () => {
     );
 
     const sortedLots = [...filteredLots].sort((a, b) => {
+        const aHasPermit = permitLotIds.has(a.id);
+        const bHasPermit = permitLotIds.has(b.id);
+
         if (sortMode === "recommendation") {
             const scoreA = a.recommendationScore ?? (100 - (a.distance || 0) * 5);
             const scoreB = b.recommendationScore ?? (100 - (b.distance || 0) * 5);
-            return scoreB - scoreA;
+
+            // Both have permits or both don't — sort by ML score
+            if (aHasPermit === bHasPermit) return scoreB - scoreA;
+
+            // Find the top ML score to keep #1 ML-recommended at the top
+            const allScores = filteredLots.map(l => l.recommendationScore ?? (100 - (l.distance || 0) * 5));
+            const topScore = Math.max(...allScores);
+
+            // If the non-permit lot is the #1 ML pick, keep it on top
+            if (!aHasPermit && scoreA >= topScore) return -1;
+            if (!bHasPermit && scoreB >= topScore) return 1;
+
+            // Otherwise, permit lot comes first
+            return aHasPermit ? -1 : 1;
         }
         return (a.distance || 0) - (b.distance || 0);
     });
@@ -213,7 +250,7 @@ const FindParking = () => {
     }, [selectedLot]);
 
     // ── Parking Card ─────────────────────────────────────────────────────────
-    const ParkingCard = ({ lot, isTop }) => {
+    const ParkingCard = ({ lot, isTop, isPermit }) => {
         const occupancyPercent = getOccupancyPercent(lot);
         const status = getStatusBadge(occupancyPercent);
         const available = lot.availableSlots ?? 0;
@@ -233,11 +270,16 @@ const FindParking = () => {
                 style={{
                     padding: '0.875rem 1rem',
                     borderBottom: '1px solid var(--glass-border)',
-                    background: isSelected ? 'rgba(99,102,241,0.1)' : isTop ? 'rgba(16,185,129,0.05)' : 'transparent',
+                    background: isSelected ? 'rgba(99,102,241,0.1)'
+                        : isTop ? 'rgba(16,185,129,0.05)'
+                        : isPermit ? 'rgba(245,158,11,0.06)'
+                        : 'transparent',
                     borderLeft: isSelected
                         ? '3px solid var(--accent-primary)'
                         : isTop
                         ? '3px solid #10b981'
+                        : isPermit
+                        ? '3px solid #f59e0b'
                         : '3px solid transparent',
                     transition: 'background 0.2s',
                 }}
@@ -251,6 +293,18 @@ const FindParking = () => {
                     }}>
                         <Award size={11} style={{ color: '#10b981' }} />
                         ⭐ ML Recommended
+                    </div>
+                )}
+
+                {/* Permit badge */}
+                {isPermit && (
+                    <div style={{
+                        display: 'flex', alignItems: 'center', gap: '0.3rem',
+                        marginBottom: '0.4rem', fontSize: '0.68rem', fontWeight: 700,
+                        color: '#fcd34d',
+                    }}>
+                        <ShieldCheck size={11} style={{ color: '#f59e0b' }} />
+                        🎫 Monthly Permit — FREE Parking
                     </div>
                 )}
 
@@ -297,9 +351,21 @@ const FindParking = () => {
                         <Star size={11} style={{ fill: 'currentColor' }} />
                         {lot.rating > 0 ? lot.rating.toFixed(1) : 'New'}
                     </span>
-                    <span style={{ fontWeight: 600, color: 'var(--accent-secondary)', fontSize: '0.88rem' }}>
-                        ₹{Number(lot.baseRate).toFixed(0)}/hr
-                    </span>
+                    {permitLotIds.has(lot.id) ? (
+                        <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+                            fontWeight: 700, color: '#10b981', fontSize: '0.82rem',
+                            background: 'rgba(16,185,129,0.12)', padding: '0.15rem 0.45rem',
+                            borderRadius: '6px', border: '1px solid rgba(16,185,129,0.25)',
+                        }}>
+                            <ShieldCheck size={12} />
+                            FREE
+                        </span>
+                    ) : (
+                        <span style={{ fontWeight: 600, color: 'var(--accent-secondary)', fontSize: '0.88rem' }}>
+                            ₹{Number(lot.baseRate).toFixed(0)}/hr
+                        </span>
+                    )}
                 </div>
 
                 {/* Current occupancy bar */}
@@ -527,6 +593,7 @@ const FindParking = () => {
                                 key={lot.id}
                                 lot={lot}
                                 isTop={sortMode === 'recommendation' && lot.id === topLotId}
+                                isPermit={permitLotIds.has(lot.id)}
                             />
                         ))
                     )}
