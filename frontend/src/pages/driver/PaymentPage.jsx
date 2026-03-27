@@ -95,12 +95,12 @@ const PaymentPage = () => {
     }
 
     return (
-        <div className="animate-fade-in max-w-2xl mx-auto p-4 py-8">
+        <div className="animate-fade-in max-w-2xl mx-auto p-4 py-8 justify-center">
             <button
                 onClick={() => navigate(-1)}
-                className="flex items-center gap-2 text-secondary hover:text-white mb-6 transition-colors"
+                className="btn-back mb-6"
             >
-                <ArrowLeft size={20} />
+                <ArrowLeft size={18} />
                 Back
             </button>
 
@@ -119,34 +119,60 @@ const PaymentPage = () => {
                     </div>
                 </div>
 
-                <h3 className="text-lg font-semibold mb-4">Select Payment Method</h3>
+                <h3 className="text-lg font-semibold mb-4 justify-center" style={{ textAlign: 'center' }}>Select Payment Method</h3>
 
-                <div className="space-y-3 mb-8">
-                    {PAYMENT_METHODS.map((method) => (
-                        <div
-                            key={method.id}
-                            onClick={() => setSelectedMethod(method.id)}
-                            className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-4 ${selectedMethod === method.id
-                                    ? 'border-accent bg-accent/5'
-                                    : 'border-transparent bg-white/5 hover:bg-white/10'
-                                }`}
-                        >
-                            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${selectedMethod === method.id ? 'bg-accent text-white' : 'bg-white/10 text-secondary'
-                                }`}>
-                                {method.icon}
+                <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '1.5rem', paddingBottom: '1rem', justifyContent: 'center' }}>
+                    {PAYMENT_METHODS.map((method) => {
+                        const isSelected = selectedMethod === method.id;
+                        return (
+                            <div
+                                key={method.id}
+                                onClick={() => setSelectedMethod(method.id)}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '1rem',
+                                    padding: '1rem',
+                                    borderRadius: '12px',
+                                    border: isSelected ? '1px solid var(--accent-primary)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                    backgroundColor: isSelected ? 'rgba(99, 102, 241, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.3s ease',
+                                    flex: '1',
+                                    minWidth: '240px',
+                                    maxWidth: '300px',
+                                    transform: isSelected ? 'scale(1.02)' : 'none',
+                                    boxShadow: isSelected ? '0 0 15px rgba(99, 102, 241, 0.25)' : 'none'
+                                }}
+                            >
+                                <div style={{ flexShrink: 0, width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    {isSelected ? (
+                                        <CheckCircle size={24} color="var(--accent-primary)" />
+                                    ) : (
+                                        <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid rgba(255, 255, 255, 0.3)' }} />
+                                    )}
+                                </div>
+                                
+                                <div style={{ 
+                                    width: '40px', height: '40px', flexShrink: 0, borderRadius: '50%', 
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    backgroundColor: isSelected ? 'var(--accent-primary)' : 'rgba(255, 255, 255, 0.1)',
+                                    color: isSelected ? '#fff' : 'var(--text-secondary)'
+                                }}>
+                                    {method.icon}
+                                </div>
+                                
+                                <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left', overflow: 'hidden' }}>
+                                    <div style={{ fontWeight: '600', fontSize: '0.9rem', color: isSelected ? '#fff' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {method.label}
+                                    </div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {method.description}
+                                    </div>
+                                </div>
                             </div>
-                            <div className="flex-1">
-                                <div className="font-semibold">{method.label}</div>
-                                <div className="text-sm text-secondary">{method.description}</div>
-                            </div>
-                            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedMethod === method.id ? 'border-accent' : 'border-secondary'
-                                }`}>
-                                {selectedMethod === method.id && (
-                                    <div className="w-3 h-3 rounded-full bg-accent" />
-                                )}
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
 
                 {error && (

@@ -164,18 +164,7 @@ const MainLayout = () => {
                             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
                         }}>ParkVerse</span>
                     </Link>
-                    <button
-                        onClick={toggleSidebar}
-                        style={{
-                            padding: '0.375rem', borderRadius: '8px',
-                            background: 'transparent', border: 'none',
-                            color: 'var(--text-secondary)', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            transition: 'background 0.15s, color 0.15s',
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = '#fff'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
-                    >
+                    <button onClick={toggleSidebar} className="btn-close">
                         <X size={18} />
                     </button>
                 </div>

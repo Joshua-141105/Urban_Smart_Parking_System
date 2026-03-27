@@ -1,6 +1,7 @@
 import { useEffect } from "react";
-import { Bell, Clock, AlertTriangle, FileText, CreditCard, Check, Trash2, RefreshCw, CheckCircle } from "lucide-react";
+import { Bell, Clock, AlertTriangle, FileText, CreditCard, Check, Trash2, RefreshCw, CheckCircle, ArrowLeft } from "lucide-react";
 import { useNotifications } from "../../context/NotificationContext";
+import { useNavigate } from "react-router-dom";
 
 const NotificationsPage = () => {
     const {
@@ -12,6 +13,7 @@ const NotificationsPage = () => {
         refresh,
         unreadCount,
     } = useNotifications();
+    const navigate = useNavigate();
 
     // Refresh when page mounts (in case new notifications arrived)
     useEffect(() => {
@@ -43,6 +45,9 @@ const NotificationsPage = () => {
 
     return (
         <div className="page-container">
+            <button onClick={() => navigate(-1)} className="btn-back mb-6">
+                <ArrowLeft size={18} /> Back
+            </button>
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem' }}>
                 <div>

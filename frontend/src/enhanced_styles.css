@@ -229,6 +229,40 @@
   padding: 1rem;
 }
 
+/* === ACTION BUTTONS === */
+.btn-back,
+.btn-close {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  cursor: pointer;
+  color: #94a3b8;
+  transition: all 0.2s ease;
+  outline: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btn-back {
+  padding: 0.4rem 0.8rem;
+}
+
+.btn-close {
+  padding: 0.4rem;
+  aspect-ratio: 1;
+}
+
+.btn-back:hover,
+.btn-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
 /* === INPUTS === */
 .input,
 .input-field {

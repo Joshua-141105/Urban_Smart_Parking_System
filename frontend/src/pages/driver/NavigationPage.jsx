@@ -194,9 +194,9 @@ const NavigationPage = () => {
                 <div className="p-4 border-b border-white/10" style={{ flexShrink: 0 }}>
                     <button
                         onClick={() => navigate(-1)}
-                        className="btn btn-ghost btn-sm flex items-center gap-2 mb-4"
+                        className="btn-back mb-4"
                     >
-                        <ArrowLeft size={16} /> Back
+                        <ArrowLeft size={18} /> Back
                     </button>
 
                     <h2 className="text-xl font-bold mb-1 truncate">{destName}</h2>

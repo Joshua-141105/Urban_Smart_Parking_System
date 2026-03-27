@@ -568,13 +568,13 @@ const BookingPayment = () => {
             {/* Header */}
             <div className="flex items-center gap-4 mb-6">
                 <button
-                    className="btn btn-ghost btn-icon"
+                    className="btn-back"
                     onClick={() => {
                         if (isSpaceLocked) handleUnlockSpace();
                         navigate(-1);
                     }}
                 >
-                    <ArrowLeft size={20} />
+                    <ArrowLeft size={18} /> Back
                 </button>
                 <div>
                     <h1 className="text-2xl font-bold">{lot?.name}</h1>

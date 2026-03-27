@@ -47,9 +47,9 @@ const BookingModal = ({ parkingLot, onClose, onSuccess }) => {
             <div className="glass-panel w-full max-w-md p-6 relative animate-fade-in">
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 text-slate-400 hover:text-white"
+                    className="btn-close absolute top-4 right-4"
                 >
-                    <X size={24} />
+                    <X size={20} />
                 </button>
 
                 <h2 className="text-2xl font-bold mb-1">Book Parking</h2>

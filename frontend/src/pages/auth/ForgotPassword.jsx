@@ -275,8 +275,8 @@ const ForgotPassword = () => {
                     </button>
 
                     <p className="text-center mt-6 text-sm text-secondary">
-                        <Link to="/login" className="text-accent font-medium hover:underline flex items-center gap-1 justify-center">
-                            <ArrowLeft size={14} /> Back to Sign In
+                        <Link to="/login" className="btn-back mx-auto mt-2" style={{ display: 'inline-flex' }}>
+                            <ArrowLeft size={18} /> Back to Sign In
                         </Link>
                     </p>
                 </form>

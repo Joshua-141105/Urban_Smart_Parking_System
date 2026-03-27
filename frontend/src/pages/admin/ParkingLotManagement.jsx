@@ -335,8 +335,8 @@ const ParkingLotManagement = () => {
                             <h2 className="text-xl font-bold">
                                 {isEditMode ? 'Edit Parking Lot' : 'Create New Parking Lot'}
                             </h2>
-                            <button onClick={() => setIsModalOpen(false)} className="text-secondary hover:text-white">
-                                <X size={24} />
+                            <button onClick={() => setIsModalOpen(false)} className="btn-close">
+                                <X size={20} />
                             </button>
                         </div>
 
@@ -467,8 +467,8 @@ const ParkingLotManagement = () => {
                                 <Ticket size={22} className="text-indigo-400" />
                                 Spot Booking
                             </h2>
-                            <button onClick={() => setIsSpotBookingOpen(false)} className="text-secondary hover:text-white">
-                                <X size={24} />
+                            <button onClick={() => setIsSpotBookingOpen(false)} className="btn-close">
+                                <X size={20} />
                             </button>
                         </div>
 
